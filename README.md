@@ -195,6 +195,10 @@ createProxy().listen(8787);
 
 Runnable example: [`examples/custom-provider.mjs`](examples/custom-provider.mjs)
 
+## Live demos
+
+- **[keylessai-daily](https://github.com/lordbasilaiassistant-sudo/keylessai-daily)** &mdash; a repo whose README writes itself. A GitHub Action calls KeylessAI every day at 09:23 UTC, generates a haiku / tip / joke / one-liner, and appends it to the README. Nobody touches the repo. Total cost: $0. Proof-of-life for the whole stack.
+
 ## Self-host
 
 This is a pure static site. To run locally:
