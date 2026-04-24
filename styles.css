@@ -672,6 +672,31 @@ main.chat {
 }
 @keyframes blink { 50% { opacity: 0; } }
 
+/* Bubble state while the model is emitting reasoning tokens (pre-content). */
+.msg.assistant .bubble.thinking {
+  color: var(--muted);
+  font-style: italic;
+  font-family: var(--mono);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.msg.assistant .bubble.thinking::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: thinking-pulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes thinking-pulse {
+  0%, 100% { transform: scale(0.6); opacity: 0.4; }
+  50%      { transform: scale(1); opacity: 1; }
+}
+
 /* ===== COMPOSER ===== */
 
 .composer {
@@ -993,4 +1018,5 @@ main.chat {
   .msg-actions-hover { transition: none; opacity: 1; }
   .dots span { animation: none; opacity: 0.7; }
   .cursor::after { animation: none; }
+  .msg.assistant .bubble.thinking::before { animation: none; opacity: 1; transform: scale(1); }
 }
