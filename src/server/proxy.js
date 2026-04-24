@@ -65,7 +65,10 @@ async function handleChatCompletions(req, res, log) {
   } catch (e) {
     return sendError(res, 400, e.message, "invalid_request_error");
   }
+  return handleChatCompletionsWithBody(req, res, body, log);
+}
 
+async function handleChatCompletionsWithBody(req, res, body, log) {
   const messages = Array.isArray(body.messages) ? body.messages : null;
   if (!messages || !messages.length) {
     return sendError(res, 400, "messages is required", "invalid_request_error");
@@ -235,6 +238,42 @@ async function handleChatCompletions(req, res, log) {
   });
 }
 
+async function handleLegacyCompletions(req, res, log) {
+  // Legacy OpenAI text-completions endpoint. Pollinations / airforce don't
+  // serve a plain "completions" model anymore, so we transparently wrap
+  // `prompt` as a single user message and delegate to chat completions.
+  let body;
+  try {
+    body = await readBody(req);
+  } catch (e) {
+    return sendError(res, 400, e.message, "invalid_request_error");
+  }
+  const prompt = typeof body.prompt === "string" ? body.prompt : null;
+  if (!prompt) {
+    return sendError(res, 400, "prompt is required (string)", "invalid_request_error");
+  }
+  // Rewrite `prompt` to chat-style `messages` and reuse the full pipeline:
+  // caching, streaming, notice-detection, queue, provider failover.
+  const rewritten = {
+    ...body,
+    messages: [{ role: "user", content: prompt }],
+  };
+  delete rewritten.prompt;
+  return handleChatCompletionsWithBody(req, res, rewritten, log);
+}
+
+function handleEmbeddings(req, res) {
+  sendJson(res, 501, {
+    error: {
+      message:
+        "embeddings are not available via KeylessAI. No current keyless provider exposes a free embeddings endpoint. For embeddings, self-host a small open model: sentence-transformers (Python), @xenova/transformers (browser/Node, via WASM), or Ollama's nomic-embed-text.",
+      type: "not_implemented",
+      param: null,
+      code: "embeddings_not_supported",
+    },
+  });
+}
+
 async function handleModels(req, res) {
   const groups = await listAllModels();
   const data = [];
@@ -296,8 +335,10 @@ export OPENAI_API_KEY="not-needed"</pre>
 <h3>Endpoints</h3>
 <ul>
   <li><code>POST /v1/chat/completions</code> — OpenAI chat completions (streaming + non-streaming)</li>
+  <li><code>POST /v1/completions</code> — legacy text completions (wraps prompt as a user message)</li>
+  <li><code>POST /v1/embeddings</code> — returns 501 (not served by any keyless upstream)</li>
   <li><code>GET /v1/models</code> — list of models and aliases</li>
-  <li><code>GET /health</code> — proxy status</li>
+  <li><code>GET /health</code> — proxy status, queue depth, cache stats</li>
 </ul>
 <p>Docs: <a href="https://github.com/lordbasilaiassistant-sudo/keylessai" target="_blank">github.com/lordbasilaiassistant-sudo/keylessai</a></p>
 </body></html>`);
@@ -321,6 +362,12 @@ export function createProxy({ log = console.log } = {}) {
     try {
       if (req.method === "POST" && (path === "/v1/chat/completions" || path === "/chat/completions")) {
         return await handleChatCompletions(req, res, log);
+      }
+      if (req.method === "POST" && (path === "/v1/completions" || path === "/completions")) {
+        return await handleLegacyCompletions(req, res, log);
+      }
+      if (req.method === "POST" && (path === "/v1/embeddings" || path === "/embeddings")) {
+        return handleEmbeddings(req, res);
       }
       if (req.method === "GET" && (path === "/v1/models" || path === "/models")) {
         return await handleModels(req, res);
