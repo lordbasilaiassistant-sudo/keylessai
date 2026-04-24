@@ -1,0 +1,41 @@
+name: Dogfood
+
+# End-to-end dogfood: boot the proxy, exercise real third-party SDKs against
+# it, catch broken docs. Uses live upstream providers (Pollinations /
+# ApiAirforce) so we require real network. Not gated on PRs — too flaky for
+# that. Runs nightly + on demand.
+
+on:
+  schedule:
+    - cron: '37 5 * * *'  # 05:37 UTC daily
+  workflow_dispatch:
+
+jobs:
+  dogfood:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run dogfood suite
+        env:
+          PORT: '8790'
+          # UTF-8 stdout for Python
+          PYTHONIOENCODING: 'utf-8'
+        run: bash ./dogfood/run-all.sh
+
+      - name: Upload transcripts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dogfood-transcripts
+          path: dogfood/transcripts/
+          retention-days: 30

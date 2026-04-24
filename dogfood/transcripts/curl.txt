@@ -1,0 +1,4 @@
+[dogfood/curl] POST http://127.0.0.1:8790/v1/chat/completions
+  response: {"id":"chatcmpl-htuivznmexhmod8cgqp","object":"chat.completion","created":1777054464,"model":"openai-fast","keylessai_provider":"pollinations","choices":[{"index":0,"message":{"role":"assistant","content":"CURL OK"},"finish_reason":"stop"}],"usage":{"prompt_tokens":null,"completion_tokens":null,"total_tokens":null}}
+  content: CURL OK
+  ✓ pass

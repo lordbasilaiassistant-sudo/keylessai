@@ -1,0 +1,4 @@
+[dogfood/embeddings-stub] POST http://127.0.0.1:8790/v1/embeddings
+  http_code: 501
+  body:      {"error":{"message":"embeddings are not available via KeylessAI. No current keyless provider exposes a free embeddings endpoint. For embeddings, self-host a small open model: sentence-transformers (Python), @xenova/transformers (browser/Node, via WASM), or Ollama's nomic-embed-text.","type":"not_implemented","param":null,"code":"embeddings_not_supported"}}
+  ✓ pass

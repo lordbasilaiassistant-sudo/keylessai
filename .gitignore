@@ -11,3 +11,5 @@ node_modules/
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
+dogfood/node_modules/
+dogfood/package*.json
