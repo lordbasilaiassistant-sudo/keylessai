@@ -31,7 +31,7 @@ Any non-empty string works as the API key. The endpoint is `https://text.pollina
 
 ## Will this always be free?
 
-The Pollinations endpoint is free as of this writing and their stated policy is to keep the anonymous tier free (sponsor-supported). If it ever goes away, KeylessAI's in-browser WebLLM fallback runs Llama-3.2, Qwen2.5, Phi-3.5, or SmolLM2 entirely on your local GPU via WebGPU — that path has no third-party dependency at inference time.
+The Pollinations endpoint is free as of this writing and their stated policy is to keep the anonymous tier free (sponsor-supported). KeylessAI also aggregates ApiAirforce's free-tier endpoint and automatically fails over between providers. If remote keyless options all disappear, you can fall back to a local-only stack outside KeylessAI (llama.cpp, Ollama, LM Studio) — but the KeylessAI product itself is remote-only to preserve the zero-user-compute guarantee.
 
 ## Does it work with Aider?
 
@@ -146,11 +146,11 @@ Yes — all of them accept an OpenAI-compatible base URL. See examples in the re
 
 ## What if Pollinations is rate-limited or down?
 
-KeylessAI's chat UI has an automatic failover router: it retries the secondary Pollinations GET transport, then offers in-browser WebLLM as the zero-dependency fallback. For your own code, wrap the call in a try/except and either retry with backoff or fall back to a local model (Ollama, llama.cpp, or WebLLM).
+KeylessAI's chat UI has an automatic failover router: it retries the primary Pollinations SSE endpoint, then ApiAirforce, then Pollinations' GET transport. A client-side single-flight queue serializes parallel callers to stay under the 1-concurrent-per-IP limit. For your own code, wrap each call in a try/except, retry with backoff, and if remote keyless options fail entirely, fall back to a local-only stack outside KeylessAI (Ollama, llama.cpp, LM Studio).
 
 ## Is it secure to ship agent traffic through a public endpoint?
 
-Any call that leaves your machine has the usual third-party risks. For private traffic use in-browser WebLLM (the model weights download once, then inference is fully local and offline). For enterprise agent traffic, self-host Pollinations (their code is open source) or use a local-only stack.
+Any call that leaves your machine has the usual third-party risks. For private traffic, use a local-only stack (llama.cpp, Ollama, LM Studio) outside KeylessAI. For enterprise agent traffic that needs the keyless aggregator pattern, self-host Pollinations (their code is open source) or add your own providers to the pool.
 
 ## How do I donate / support the project?
 
@@ -162,7 +162,7 @@ OpenRouter requires signup and an API key; it aggregates *paid* providers and re
 
 ## How does it compare to LM Studio, Ollama, llama.cpp?
 
-Those run models locally on your hardware — good, but require local compute and setup. KeylessAI works zero-install in any browser, or via a single env var swap. The in-browser WebLLM mode is comparable to running llama.cpp locally but inside the browser via WebGPU.
+Those run models locally on your hardware — good for privacy, but require local compute, multi-GB downloads, and a GPU. KeylessAI's whole premise is the opposite: zero user compute. We aggregate remote keyless endpoints so inference happens on someone else's hardware (a sponsor's, typically), and all you do is swap one env var. If you want privacy or offline capability, run a local stack outside KeylessAI — the two approaches don't compete.
 
 ## Repository structure
 
@@ -174,7 +174,7 @@ Those run models locally on your hardware — good, but require local compute an
     ├── providers/
     │   ├── pollinations.js     primary (SSE, OpenAI-compatible)
     │   ├── pollinations-get.js secondary (GET, plain text)
-    │   └── webllm.js           in-browser WebGPU (lazy-loaded)
+    │   └── airforce.js         ApiAirforce free-tier (SSE, OpenAI-compatible)
     ├── styles.css              design system
     ├── og-image.svg            1200x630 social preview
     ├── robots.txt

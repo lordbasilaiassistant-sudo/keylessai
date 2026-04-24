@@ -52,7 +52,7 @@
     Drop-in OpenAI replacement for Aider, Cline, Continue, LangChain,
   </text>
   <text x="80" y="446" class="sans" font-weight="400" font-size="26" fill="#a8b2c3">
-    and any existing OpenAI SDK. Plus in-browser WebLLM for offline.
+    and any existing OpenAI SDK. Aggregated keyless providers, auto-failover.
   </text>
 
   <!-- Code sample -->

@@ -4,8 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>KeylessAI — Free OpenAI API Alternative, No API Key Required | Drop-in Replacement for Aider, Cline, LangChain</title>
-<meta name="description" content="Free LLM inference with zero API keys. Drop-in OpenAI-compatible replacement for Aider, Cline, Continue.dev, LangChain, and any OpenAI SDK. Runs in your browser, no signup, no backend, no cost. Uses Pollinations and in-browser WebLLM." />
-<meta name="keywords" content="free openai api, no api key llm, keyless ai, free gpt, openai alternative, aider free, cline free, continue.dev free, langchain free, webllm, in-browser llm, webgpu inference, pollinations, drop-in openai replacement, free llm inference, free chatbot, free ai agent" />
+<meta name="description" content="Free LLM inference with zero API keys. Drop-in OpenAI-compatible replacement for Aider, Cline, Continue.dev, LangChain, and any OpenAI SDK. Aggregates public no-auth endpoints (Pollinations, ApiAirforce) with auto-failover, client-side queueing, and ad/notice filtering. No signup, no backend, no user compute." />
+<meta name="keywords" content="free openai api, no api key llm, keyless ai, free gpt, openai alternative, aider free, cline free, continue.dev free, langchain free, pollinations, apiairforce, drop-in openai replacement, free llm inference, free chatbot, free ai agent, free llm aggregator, openai compatible proxy" />
 <meta name="author" content="drlor" />
 <link rel="canonical" href="https://lordbasilaiassistant-sudo.github.io/keylessai/" />
 <meta name="robots" content="index, follow, max-image-preview:large" />
@@ -14,7 +14,7 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://lordbasilaiassistant-sudo.github.io/keylessai/" />
 <meta property="og:title" content="KeylessAI — Free OpenAI API Alternative, No Key Required" />
-<meta property="og:description" content="Free LLM inference. Zero API keys. Drop-in OpenAI-compatible endpoint that works with Aider, Cline, Continue, LangChain, and any existing OpenAI SDK. Plus in-browser WebLLM for fully offline inference." />
+<meta property="og:description" content="Free LLM inference. Zero API keys. Drop-in OpenAI-compatible endpoint that works with Aider, Cline, Continue, LangChain, and any existing OpenAI SDK. Aggregates keyless providers with auto-failover and spam filtering." />
 <meta property="og:image" content="https://lordbasilaiassistant-sudo.github.io/keylessai/og-image.svg" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
@@ -34,18 +34,19 @@
   "url": "https://lordbasilaiassistant-sudo.github.io/keylessai/",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Any (browser)",
-  "description": "Free LLM inference with zero API keys. Drop-in OpenAI-compatible replacement that works with Aider, Cline, Continue.dev, LangChain, and any OpenAI SDK. Runs in the browser, no backend, no signup.",
+  "description": "Free LLM inference with zero API keys. Drop-in OpenAI-compatible replacement that aggregates public no-auth endpoints (Pollinations, ApiAirforce) with automatic failover, client-side queueing, and spam/notice filtering.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
   "author": { "@type": "Person", "name": "drlor" },
   "license": "https://opensource.org/licenses/MIT",
-  "softwareRequirements": "Modern browser with WebGPU (for in-browser mode)",
+  "softwareRequirements": "Modern browser (no local GPU or install required)",
   "featureList": [
     "OpenAI-compatible chat completions endpoint",
     "Streaming SSE responses",
-    "Works with Aider, Cline, Continue.dev, LangChain, OpenAI SDK",
-    "In-browser WebLLM via WebGPU (Llama, Qwen, Phi, SmolLM)",
-    "Automatic provider failover",
-    "Zero API keys required"
+    "Works with Aider, Cline, Continue.dev, Codex, LangChain, OpenAI SDK",
+    "Multi-provider aggregation with automatic failover (Pollinations, ApiAirforce)",
+    "Client-side single-flight queue to stay under per-IP rate limits",
+    "Automatic detection + retry when providers inject ads or deprecation notices",
+    "Zero API keys, zero signup, zero user compute"
   ]
 }
 </script>
@@ -122,15 +123,15 @@
       "name": "Is KeylessAI really free?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. There are no API keys, no signup, no credit card, no email required. The project is MIT-licensed and hosted on GitHub Pages. Inference is served by Pollinations (sponsor-funded free public API) or by WebLLM running in your own browser."
+        "text": "Yes. There are no API keys, no signup, no credit card, no email required. The project is MIT-licensed and hosted on GitHub Pages. Inference is served by public no-auth endpoints: primarily Pollinations.ai (sponsor-funded) and ApiAirforce (free tier). No user compute required."
       }
     },
     {
       "@type": "Question",
-      "name": "Can KeylessAI run fully offline?",
+      "name": "What happens if one of the backends is rate-limited or down?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. Select the webllm provider — models (Llama-3.2, Qwen2.5, Phi-3.5, SmolLM2) download once to your browser and then run entirely on your local GPU via WebGPU. No network dependency after the initial download."
+        "text": "KeylessAI's router automatically fails over to the next provider in the pool. It also implements a client-side single-flight queue so parallel callers serialize cleanly under Pollinations' 1-concurrent-per-IP limit, and detects when a provider injects promo URLs or deprecation notices and retries with backoff up to three times before switching providers."
       }
     }
   ]
@@ -254,7 +255,8 @@
     <h3 style="color:var(--blue);">How is it free?</h3>
     <ul>
       <li><strong>Pollinations.ai</strong> invites public use of their inference API. Bandwidth paid by their sponsors.</li>
-      <li><strong>WebLLM</strong> runs open models locally in your browser via WebGPU. Zero network cost, full privacy.</li>
+      <li><strong>ApiAirforce</strong> exposes several free-tier models (grok-4.1-mini, step-3.5-flash, etc.) without requiring a key.</li>
+      <li>We aggregate more keyless providers as they appear &mdash; the router auto-fails over between them and filters out ad/notice injections.</li>
     </ul>
     <h3 style="color:var(--blue);">Want to use these in your code?</h3>
     <p>Click the <code>&lt;/&gt; API</code> button. Copy-paste snippets for curl, fetch, Python. No keys, ever.</p>

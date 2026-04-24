@@ -1,47 +1,56 @@
 # KeylessAI
 
-> Free LLM inference with zero API keys. A drop-in OpenAI-compatible replacement that works with Aider, Cline, Continue.dev, LangChain, and any existing OpenAI SDK. Runs as a static page in the browser with automatic failover across public endpoints, plus in-browser WebLLM for fully offline inference.
+> Free LLM inference with zero API keys. A drop-in OpenAI-compatible replacement that works with Aider, Cline, Continue.dev, LangChain, and any existing OpenAI SDK. Aggregates public no-auth endpoints (Pollinations, ApiAirforce) with automatic failover, client-side queueing, and ad/notice filtering. No user compute required.
 
-## Use as a drop-in OpenAI replacement
+## Use as a drop-in OpenAI replacement — zero install path
 
-Start the local proxy (no install, zero deps):
+Point any OpenAI-compatible client directly at Pollinations. Nothing runs on your machine.
+
+```bash
+export OPENAI_API_BASE="https://text.pollinations.ai"
+export OPENAI_BASE_URL="https://text.pollinations.ai"
+export OPENAI_API_KEY="not-needed"
+export OPENAI_MODEL="openai-fast"
+```
+
+That's the whole setup. No signup, no daemon, no signup.
+
+## Optional: local proxy for model-name aliasing + aggregation
+
+If your tool hardcodes model names like `gpt-4o` or `claude-3-5-sonnet-latest`, run the proxy:
 
 ```bash
 npx github:lordbasilaiassistant-sudo/keylessai serve
 ```
 
-Then point any OpenAI-compatible client at it:
-
-```bash
-export OPENAI_API_BASE="http://127.0.0.1:8787/v1"
-export OPENAI_BASE_URL="http://127.0.0.1:8787/v1"
-export OPENAI_API_KEY="not-needed"
-```
-
-The proxy supports model aliasing — you can keep sending `gpt-4o`, `gpt-4o-mini`, `claude-3-5-sonnet-latest` etc. in your existing code, and KeylessAI transparently routes them to the free anonymous-tier model.
-
-**No-install alternative:** point `OPENAI_API_BASE` directly at `https://text.pollinations.ai` (you lose aliasing + failover, gain serverless-compatibility).
+It listens on `http://127.0.0.1:8787/v1` and transparently aliases OpenAI/Anthropic model names to the current keyless-tier model, fails over across providers, and de-spams upstream responses.
 
 Works with:
 - Aider (`aider --model openai/openai-fast`)
 - Cline / Roo Code VS Code extensions
 - Continue.dev
+- Codex CLI
 - LangChain (`ChatOpenAI(base_url=..., api_key=...)`)
 - Official OpenAI SDK (JS and Python)
+- Claude Code (via LiteLLM bridge — see examples/claude-code-bridge.md)
 
-Current anonymous-tier model: `openai-fast` (GPT-OSS 20B). Good for prototyping, glue code, and light agent loops. Not a 1:1 GPT-4 replacement on hard reasoning.
+Current anonymous-tier model on Pollinations: `openai-fast` (GPT-OSS 20B). ApiAirforce offers additional `:free` models (`grok-4.1-mini:free`, `step-3.5-flash:free`, etc.).
 
-## In-browser offline mode (WebLLM)
+## Why KeylessAI over raw Pollinations
 
-When the public endpoints are rate-limited or down, KeylessAI can fall back to running open models locally in the browser via WebGPU. Supported: Llama-3.2-1B/3B-Instruct, Qwen2.5-1.5B-Instruct, Phi-3.5-mini-instruct, SmolLM2-1.7B-Instruct.
+- Pollinations anonymous tier is 1 concurrent request per IP. KeylessAI's client-side single-flight queue serializes parallel callers so you never hit "Queue full" 429s.
+- Pollinations occasionally returns "IMPORTANT NOTICE" deprecation text INSTEAD of model output. KeylessAI detects that pattern and retries up to 3 times with backoff.
+- ApiAirforce occasionally returns promo URLs ("op.wtf", "upgrade your plan"). Same detection + retry flow handles it.
+- If the primary provider fails, the router falls through to the next one in the pool automatically.
 
 ## Resources
 
 - Live site: https://lordbasilaiassistant-sudo.github.io/keylessai/
 - GitHub: https://github.com/lordbasilaiassistant-sudo/keylessai
-- API reference: https://lordbasilaiassistant-sudo.github.io/keylessai/ (click `</> API` in the top bar)
+- API reference drawer: open the live site, click `</> API` in the top bar
 - Pollinations docs: https://github.com/pollinations/pollinations/blob/master/APIDOCS.md
-- WebLLM docs: https://github.com/mlc-ai/web-llm
+- ApiAirforce: https://api.airforce
+- g4f-working daily list: https://github.com/Free-AI-Things/g4f-working
 
 ## License
 
