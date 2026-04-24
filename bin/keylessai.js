@@ -17,12 +17,13 @@ const BANNER = String.raw`
 `;
 
 function parseArgs(argv) {
-  const args = { _: [], port: 8787, host: "127.0.0.1", quiet: false };
+  const args = { _: [], port: 8787, host: "127.0.0.1", quiet: false, local: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--port" || a === "-p") args.port = Number(argv[++i]);
     else if (a === "--host") args.host = argv[++i];
     else if (a === "--quiet" || a === "-q") args.quiet = true;
+    else if (a === "--local" || a === "-l") args.local = true;
     else if (a === "--help" || a === "-h") args.help = true;
     else args._.push(a);
   }
@@ -34,13 +35,18 @@ function printHelp() {
 Usage:
   npx github:lordbasilaiassistant-sudo/keylessai <command> [options]
 
+Most users don't need this CLI — just point OPENAI_API_BASE at the public
+Cloudflare Worker URL. This CLI is for local-first setups, diagnostics,
+and running your own on-prem proxy.
+
 Commands:
-  serve                 Start a local OpenAI-compatible proxy (default: 127.0.0.1:8787)
-  test                  Send a quick test prompt to the provider pool
+  serve [--local]       Start a local OpenAI-compatible proxy on 127.0.0.1:8787
+  test                  Send a quick test prompt through the provider pool
   doctor                Diagnose provider health, list models, surface Node version
   help                  Show this message
 
 Options (for 'serve'):
+  -l, --local           Acknowledge that this runs locally (no-op flag; makes intent explicit in scripts)
   -p, --port <n>        Port to listen on (default: 8787)
       --host <addr>     Host/interface to bind (default: 127.0.0.1, use 0.0.0.0 for LAN)
   -q, --quiet           Suppress per-request logs

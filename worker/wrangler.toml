@@ -1,0 +1,21 @@
+name = "keylessai"
+main = "index.js"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Free tier is 100,000 requests/day. When the bucket empties, Cloudflare
+# returns a generic error for the remainder of the day. You will NOT be
+# billed unless you explicitly opt in to the Workers Paid plan — this
+# worker stays free by default.
+
+# To deploy:
+#   npx wrangler login    (one-time)
+#   cd worker && npx wrangler deploy
+#
+# Your public URL will be https://keylessai.<your-subdomain>.workers.dev
+# unless you bind a custom domain.
+
+# Observability is off by default (it's free but opt-in). Flip this on
+# once you care about traffic patterns:
+# [observability]
+# enabled = true

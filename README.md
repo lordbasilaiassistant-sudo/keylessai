@@ -20,31 +20,29 @@ If you run autonomous coding agents, chatbots, or LangChain pipelines, your Open
 
 KeylessAI adds the layer on top of raw Pollinations that makes this usable in production: multi-provider aggregation (Pollinations + [ApiAirforce](https://api.airforce/) today, more as they appear), a client-side single-flight queue so parallel callers don't blow through the 1-concurrent-per-IP limit, and aggressive filtering of the deprecation notices and promo-URL ads that upstream providers occasionally inject into responses.
 
-## The one-liner (run this)
+## The one-liner — public URL, zero install
 
 ```bash
-npx github:lordbasilaiassistant-sudo/keylessai serve
-```
-
-That starts a local OpenAI-compatible proxy at `http://127.0.0.1:8787/v1` with:
-
-- Automatic provider failover across the free pool
-- Model name aliasing &mdash; your existing code can send `gpt-4o`, `gpt-4o-mini`, `claude-3-5-sonnet-latest`, `o1-mini`, etc. and the proxy transparently routes to `openai-fast`
-- Streaming SSE + non-streaming, both in standard OpenAI shape
-- `Authorization` header accepted but ignored (any value works)
-- CORS `*` so your browser apps can hit it too
-- Zero dependencies beyond Node 18+; zero install beyond `npx`
-
-Then in a second terminal:
-
-```bash
-export OPENAI_API_BASE="http://127.0.0.1:8787/v1"
-export OPENAI_BASE_URL="http://127.0.0.1:8787/v1"
+export OPENAI_API_BASE="https://keylessai.<subdomain>.workers.dev/v1"
+export OPENAI_BASE_URL="https://keylessai.<subdomain>.workers.dev/v1"
 export OPENAI_API_KEY="not-needed"
 # now run your agent — no changes to your code
 ```
 
-**No-install alternative** (if you can't or don't want to run the proxy): point `OPENAI_API_BASE` directly at `https://text.pollinations.ai`. You lose the model-name aliasing and failover logic, but it works from any CI/serverless environment that can't run a local proxy.
+The public URL hits a Cloudflare Worker that wraps our router: multi-provider pool, adaptive failover, circuit breaker, prompt cache, model-name aliasing (so `gpt-4o`, `claude-3-5-sonnet-latest` etc. resolve automatically), spam/notice filtering, per-IP rate limiting. Free tier serves 100k requests/day and **literally cannot bill the operator** beyond that — it just 429s until tomorrow.
+
+> Not deployed yet? Deploy your own copy with `cd worker && npx wrangler deploy` — see [`worker/README.md`](worker/README.md). Once the canonical URL is live, this section will show it.
+
+### Opt-in: run a local proxy instead
+
+Prefer to run everything on localhost (air-gapped, behind corporate proxy, zero-external-deps)? Start your own:
+
+```bash
+npx github:lordbasilaiassistant-sudo/keylessai serve --local
+export OPENAI_API_BASE="http://127.0.0.1:8787/v1"
+```
+
+Same router, same features, same code — just running in your shell instead of Cloudflare's edge. Use `--port N` to pick a different port, `--host 0.0.0.0` to expose on LAN.
 
 ## Works with
 
