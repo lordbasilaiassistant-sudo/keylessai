@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest a UX, router, or tooling improvement.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences. What is the feature?
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: What's the user problem this solves? Who feels the pain?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Concrete UI/API/routing change. Include edge cases you've thought about.
+    validations:
+      required: true
