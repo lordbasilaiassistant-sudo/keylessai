@@ -8,6 +8,7 @@
 import * as pollinations from "../../providers/pollinations.js";
 import * as pollinationsGet from "../../providers/pollinations-get.js";
 import * as airforce from "../../providers/airforce.js";
+import * as yqcloud from "../../providers/yqcloud.js";
 import { defaultSlotGate } from "./queue.js";
 import { looksLikeNotice } from "./notices.js";
 import { defaultBreaker } from "./circuit.js";
@@ -27,6 +28,7 @@ export const PROVIDERS = {
   [pollinations.id]: pollinations,
   [pollinationsGet.id]: pollinationsGet,
   [airforce.id]: airforce,
+  [yqcloud.id]: yqcloud,
 };
 
 /**
@@ -35,6 +37,7 @@ export const PROVIDERS = {
  */
 export const FAILOVER_ORDER = [
   pollinations.id,
+  yqcloud.id,
   airforce.id,
   pollinationsGet.id,
 ];
