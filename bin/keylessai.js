@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { createProxy } from "../src/proxy.js";
-import { streamChat, PROVIDERS } from "../router.js";
+import { createProxy } from "../src/server/proxy.js";
+import { streamChat, PROVIDERS } from "../src/core/router.js";
 
 const BANNER = String.raw`
   ╭─────────────────────────────────────────────────╮

@@ -11,13 +11,15 @@
     ".": "./src/index.js",
     "./providers/pollinations": "./providers/pollinations.js",
     "./providers/pollinations-get": "./providers/pollinations-get.js",
-    "./router": "./router.js"
+    "./providers/airforce": "./providers/airforce.js",
+    "./router": "./src/core/router.js",
+    "./cache": "./src/core/cache.js",
+    "./queue": "./src/core/queue.js"
   },
   "files": [
     "bin",
     "src",
     "providers",
-    "router.js",
     "README.md",
     "AGENTS.md",
     "LICENSE"

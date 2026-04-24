@@ -24,7 +24,7 @@ jobs:
         run: |
           set -euo pipefail
           fail=0
-          for f in app.js api.js router.js src/*.js bin/*.js providers/*.js test/*.mjs; do
+          for f in app.js bin/*.js src/*.js src/core/*.js src/server/*.js src/ui/*.js providers/*.js test/*.mjs; do
             if [ -f "$f" ]; then
               node --check "$f" || { echo "  FAIL $f"; fail=1; }
             fi

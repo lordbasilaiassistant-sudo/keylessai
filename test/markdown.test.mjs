@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { renderMarkdownHtml } from "../src/markdown.js";
+import { renderMarkdownHtml } from "../src/ui/markdown.js";
 
 test("escapes raw HTML", () => {
   const out = renderMarkdownHtml("plain <script>alert(1)</script> text");

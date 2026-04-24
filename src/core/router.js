@@ -1,7 +1,7 @@
-import * as pollinations from "./providers/pollinations.js";
-import * as pollinationsGet from "./providers/pollinations-get.js";
-import * as airforce from "./providers/airforce.js";
-import { defaultSlotGate } from "./src/queue.js";
+import * as pollinations from "../../providers/pollinations.js";
+import * as pollinationsGet from "../../providers/pollinations-get.js";
+import * as airforce from "../../providers/airforce.js";
+import { defaultSlotGate } from "./queue.js";
 
 export const PROVIDERS = {
   [pollinations.id]: pollinations,
