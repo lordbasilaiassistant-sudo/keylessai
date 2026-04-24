@@ -1,8 +1,13 @@
 .DS_Store
 Thumbs.db
 node_modules/
-.vscode/
 .idea/
 *.log
 .env
 .env.*
+*.tgz
+
+# Share opinionated VS Code workspace settings, ignore user-local files.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
