@@ -1,0 +1,60 @@
+name: Provider request
+description: Propose a new keyless provider to wrap.
+title: "provider: "
+labels: ["provider"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Provider name
+      description: Short human name (e.g. "Airforce", "Pollinations").
+    validations:
+      required: true
+  - type: input
+    id: endpoint
+    attributes:
+      label: Endpoint URL
+      description: Base URL for the chat/completions endpoint.
+      placeholder: https://api.example.com/v1
+    validations:
+      required: true
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Auth mechanism
+      description: KeylessAI only accepts "none". Everything else is a non-starter.
+      options:
+        - none
+        - cookie
+        - session token
+        - other
+    validations:
+      required: true
+  - type: dropdown
+    id: cors
+    attributes:
+      label: CORS support
+      description: Can a browser call it directly from `file://` or a static host?
+      options:
+        - "yes"
+        - "no"
+        - unknown
+    validations:
+      required: true
+  - type: textarea
+    id: models
+    attributes:
+      label: Models available
+      description: List known model IDs and whether each is actually free today.
+      placeholder: |
+        - foo-7b (free, confirmed 2026-04-24)
+        - bar-70b (paid)
+    validations:
+      required: true
+  - type: textarea
+    id: limits
+    attributes:
+      label: Rate limits
+      description: Known RPM/RPD caps, IP throttling, or other restrictions. "Unknown" is fine, but say so.
+    validations:
+      required: true
