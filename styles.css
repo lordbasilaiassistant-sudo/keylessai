@@ -287,6 +287,44 @@ main.chat {
   color: var(--accent);
 }
 
+.pool-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0 2px 0;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pool-stats b {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.pool-stats .pool-label {
+  color: var(--dim);
+  margin-left: 6px;
+  letter-spacing: 0.02em;
+}
+
+.pool-stats a {
+  color: var(--blue);
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+}
+.pool-stats a:hover { border-bottom-color: var(--blue); }
+
+.pool-stats .pool-sep {
+  color: var(--border-strong);
+  font-weight: 300;
+}
+
 .suggestion-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
