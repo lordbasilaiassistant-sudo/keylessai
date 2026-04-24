@@ -12,6 +12,7 @@ Copy-paste integrations for every tool KeylessAI works with. No keys required.
 | [`openai-sdk-python.py`](openai-sdk-python.py) | [OpenAI Python SDK](https://github.com/openai/openai-python) | unchanged SDK, one baseURL swap |
 | [`litellm-config.yaml`](litellm-config.yaml) | [LiteLLM](https://github.com/BerriAI/litellm) | unify KeylessAI with your other providers behind one proxy |
 | [`curl-streaming.sh`](curl-streaming.sh) | curl | raw HTTP, no dependencies |
+| [`airforce-direct.sh`](airforce-direct.sh) | [ApiAirforce](https://api.airforce) | keyless `grok-4.1-mini:free` via raw curl |
 | [`claude-code-bridge.md`](claude-code-bridge.md) | Claude Code / Codex / OpenHands / Cursor | including Anthropic-format harness bridge via LiteLLM |
 
 ## The core config (works for 90% of tools)
