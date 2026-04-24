@@ -59,9 +59,15 @@ function setStatus(text, kind = "") {
 
 function setStreaming(on) {
   state.streaming = on;
-  sendBtn.disabled = on;
-  sendBtn.textContent = on ? "stop" : "send";
+  // Button stays enabled so users can click to abort while streaming.
+  sendBtn.disabled = false;
+  sendBtn.textContent = on ? "■ stop" : "send →";
   sendBtn.classList.toggle("primary", !on);
+  sendBtn.classList.toggle("ghost", on);
+  sendBtn.setAttribute(
+    "aria-label",
+    on ? "Stop generating" : "Send message"
+  );
 }
 
 // ===== Model selector =====
