@@ -1,5 +1,21 @@
 import { streamChat, listAllModels, PROVIDERS } from "./src/core/router.js";
 import { renderMarkdownHtml, attachCodeCopyHandlers } from "./src/ui/markdown.js";
+import {
+  loadPreferences,
+  savePreferences,
+  setLastModel,
+  loadConversation,
+  saveConversation,
+  clearStoredConversation,
+} from "./src/ui/storage.js";
+import { renderSuggestions } from "./src/ui/suggestions.js";
+import {
+  addMessage,
+  appendAssistantActions,
+  appendErrorActions,
+  findLastAssistantIndex,
+} from "./src/ui/messages.js";
+import { updatePoolStats } from "./src/ui/pool-stats.js";
 
 const $ = (id) => document.getElementById(id);
 const messagesEl = $("messages");
@@ -13,6 +29,8 @@ const newChatBtn = $("newChatBtn");
 const thanksEl = $("thanks");
 const aboutLink = $("aboutLink");
 const aboutDialog = $("aboutDialog");
+const heroEl = $("hero");
+const suggestionsEl = $("suggestions");
 
 const state = {
   conversation: [],
@@ -22,138 +40,17 @@ const state = {
   modelGroups: [],
 };
 
-const heroEl = document.getElementById("hero");
-const suggestionsEl = document.getElementById("suggestions");
-
-const SUGGESTIONS = [
-  { label: "Build", prompt: "Write a Python script that renames every file in a folder to lowercase." },
-  { label: "Explain", prompt: "Explain this regex: /^(?!.*\\s)[a-zA-Z0-9_-]{3,16}$/" },
-  { label: "Debug", prompt: "What are 5 likely reasons a fetch() call works locally but fails in production?" },
-  { label: "Refactor", prompt: "Rewrite this in TypeScript with proper types:\n\nfunction greet(name) { return 'hi ' + name }" },
-  { label: "SQL", prompt: "Given a users table with (id, email, created_at), write a query to get the 5 newest users per email domain." },
-  { label: "Shell", prompt: "One-line bash: find all .log files modified in the last 24h and compress them." },
-];
-
-function renderSuggestions() {
-  if (!suggestionsEl) return;
-  suggestionsEl.innerHTML = "";
-  for (const s of SUGGESTIONS) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "suggestion";
-    btn.innerHTML = `<small>${s.label}</small>${escapeHtml(s.prompt.split("\n")[0])}`;
-    btn.addEventListener("click", () => {
-      hideHero();
-      void send(s.prompt);
-    });
-    suggestionsEl.appendChild(btn);
-  }
-}
+// ===== Hero + suggestions =====
 
 function hideHero() {
-  if (heroEl && !heroEl.hidden) {
-    heroEl.hidden = true;
-  }
+  if (heroEl && !heroEl.hidden) heroEl.hidden = true;
 }
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+function showHero() {
+  if (heroEl) heroEl.hidden = false;
 }
 
-const CONVERSATION_KEY = "keylessai:conversation:v1";
-const MAX_STORED_TURNS = 50;
-
-function loadState() {
-  try {
-    const saved = JSON.parse(localStorage.getItem("keylessai:state") || "null");
-    if (saved?.provider) providerSelect.value = saved.provider;
-    if (saved?.model) localStorage.setItem("keylessai:lastModel", saved.model);
-  } catch {}
-}
-
-function saveState() {
-  try {
-    localStorage.setItem(
-      "keylessai:state",
-      JSON.stringify({
-        provider: providerSelect.value,
-        model: modelSelect.value,
-      })
-    );
-  } catch {}
-}
-
-function saveConversation() {
-  try {
-    const trimmed = state.conversation.slice(-MAX_STORED_TURNS);
-    if (trimmed.length === 0) {
-      localStorage.removeItem(CONVERSATION_KEY);
-      return;
-    }
-    localStorage.setItem(CONVERSATION_KEY, JSON.stringify(trimmed));
-  } catch {}
-}
-
-function loadConversation() {
-  try {
-    const raw = localStorage.getItem(CONVERSATION_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return;
-    state.conversation = parsed
-      .filter((m) => m && typeof m.content === "string" && (m.role === "user" || m.role === "assistant"))
-      .slice(-MAX_STORED_TURNS);
-    for (const msg of state.conversation) {
-      const opts = msg.role === "assistant" ? { provider: "restored" } : {};
-      const { wrap } = addMessage(msg.role, msg.content, opts);
-      if (msg.role === "assistant" && msg.content) {
-        appendAssistantActions(wrap, msg.content);
-      }
-    }
-    if (state.conversation.length > 0) {
-      hideHero();
-    }
-  } catch {
-    // corrupt state — clear it
-    try { localStorage.removeItem(CONVERSATION_KEY); } catch {}
-  }
-}
-
-function clearConversation() {
-  state.conversation = [];
-  try { localStorage.removeItem(CONVERSATION_KEY); } catch {}
-}
-
-function addMessage(role, text, { provider } = {}) {
-  const wrap = document.createElement("div");
-  wrap.className = `msg ${role}`;
-  const roleEl = document.createElement("div");
-  roleEl.className = "role";
-  roleEl.textContent = role;
-  if (provider) {
-    const badge = document.createElement("span");
-    badge.className = "provider-badge";
-    badge.textContent = provider;
-    roleEl.appendChild(badge);
-  }
-  const bubble = document.createElement("div");
-  bubble.className = "bubble";
-  if (role === "assistant" && text) {
-    bubble.innerHTML = renderMarkdownHtml(text);
-    attachCodeCopyHandlers(bubble);
-  } else {
-    bubble.textContent = text || "";
-  }
-  wrap.appendChild(roleEl);
-  wrap.appendChild(bubble);
-  messagesEl.appendChild(wrap);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-  return { wrap, bubble, roleEl };
-}
+// ===== Status + streaming lock =====
 
 function setStatus(text, kind = "") {
   statusEl.textContent = text || "";
@@ -167,39 +64,13 @@ function setStreaming(on) {
   sendBtn.classList.toggle("primary", !on);
 }
 
+// ===== Model selector =====
+
 async function populateModels() {
   const groups = await listAllModels();
   state.modelGroups = groups;
   renderModelOptions();
   updatePoolStats(groups);
-}
-
-async function updatePoolStats(liveGroups) {
-  try {
-    const liveProviders = liveGroups.filter((g) => g.models.length).length;
-    const liveModels = liveGroups.reduce((a, g) => a + g.models.length, 0);
-    const $lp = document.getElementById("pool-live-providers");
-    const $lm = document.getElementById("pool-live-models");
-    const $tp = document.getElementById("pool-tracked-providers");
-    const $tm = document.getElementById("pool-tracked-models");
-    const $wrap = document.getElementById("pool-stats");
-    if ($lp) $lp.textContent = String(liveProviders);
-    if ($lm) $lm.textContent = String(liveModels);
-    try {
-      const res = await fetch("./providers/_catalog.json", { cache: "no-store" });
-      if (res.ok) {
-        const cat = await res.json();
-        const providers = Object.keys(cat.providers || {}).length;
-        const models = Object.values(cat.providers || {}).reduce(
-          (a, arr) => a + (Array.isArray(arr) ? arr.length : 0),
-          0
-        );
-        if ($tp) $tp.textContent = String(providers);
-        if ($tm) $tm.textContent = String(models);
-      }
-    } catch {}
-    if ($wrap) $wrap.hidden = false;
-  } catch {}
 }
 
 function renderModelOptions() {
@@ -232,10 +103,10 @@ function renderModelOptions() {
     modelSelect.appendChild(og);
   }
 
-  const last = localStorage.getItem("keylessai:lastModel");
-  if (last) {
+  const prefs = loadPreferences();
+  if (prefs.lastModel) {
     for (const opt of modelSelect.options) {
-      if (opt.value === last) {
+      if (opt.value === prefs.lastModel) {
         opt.selected = true;
         break;
       }
@@ -247,61 +118,57 @@ function renderModelOptions() {
   }
 }
 
-providerSelect.addEventListener("change", () => {
-  renderModelOptions();
-  saveState();
-});
+// ===== Conversation + messages glue =====
 
-modelSelect.addEventListener("change", () => {
-  localStorage.setItem("keylessai:lastModel", modelSelect.value);
-  saveState();
-});
-
-newChatBtn.addEventListener("click", () => {
-  if (state.streaming) state.controller?.abort();
-  clearConversation();
-  messagesEl.innerHTML = "";
-  setStatus("");
-  if (heroEl) heroEl.hidden = false;
-  inputEl.focus();
-});
-
-aboutLink.addEventListener("click", (e) => {
-  e.preventDefault();
-  aboutDialog.showModal();
-});
-
-composerEl.addEventListener("submit", (e) => {
-  e.preventDefault();
-  if (state.streaming) {
-    state.controller?.abort();
-    return;
+function restoreConversation() {
+  state.conversation = loadConversation();
+  for (const msg of state.conversation) {
+    const opts = msg.role === "assistant" ? { provider: "restored" } : {};
+    const { wrap } = addMessage(messagesEl, msg.role, msg.content, opts);
+    if (msg.role === "assistant" && msg.content) {
+      attachAssistantActions(wrap, msg.content);
+    }
   }
-  const text = inputEl.value.trim();
-  if (!text) return;
-  inputEl.value = "";
-  autoResize();
-  hideHero();
-  void send(text);
-});
-
-function autoResize() {
-  inputEl.style.height = "auto";
-  inputEl.style.height = Math.min(inputEl.scrollHeight, 220) + "px";
+  if (state.conversation.length > 0) hideHero();
 }
-inputEl.addEventListener("input", autoResize);
 
-inputEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    composerEl.requestSubmit();
-  }
-});
+function attachAssistantActions(wrap, text) {
+  appendAssistantActions(wrap, text, {
+    onRegenerate: () => {
+      if (state.streaming) return;
+      const idx = findLastAssistantIndex(state.conversation);
+      if (idx >= 0) {
+        state.conversation.splice(idx, 1);
+        saveConversation(state.conversation);
+      }
+      wrap.remove();
+      void requestAssistant();
+    },
+  });
+}
+
+function attachErrorActions(wrap, triedProviders) {
+  appendErrorActions(wrap, triedProviders, {
+    onRetry: () => {
+      if (state.streaming) return;
+      wrap.remove();
+      void requestAssistant();
+    },
+    onSwitchProvider: () => {
+      providerSelect.focus();
+      try {
+        providerSelect.showPicker?.();
+      } catch {}
+    },
+  });
+}
+
+// ===== Send + stream =====
 
 async function send(userText) {
-  addMessage("user", userText);
+  addMessage(messagesEl, "user", userText);
   state.conversation.push({ role: "user", content: userText });
-  saveConversation();
+  saveConversation(state.conversation);
   await requestAssistant();
 }
 
@@ -312,7 +179,7 @@ async function requestAssistant() {
     providerChoice === "auto" ? "auto" : selection.provider || providerChoice;
   const modelId = selection.model;
 
-  const { wrap, bubble, roleEl } = addMessage("assistant", "", {
+  const { wrap, bubble, roleEl } = addMessage(messagesEl, "assistant", "", {
     provider: routerProvider === "auto" ? "auto" : routerProvider,
   });
   bubble.classList.add("cursor");
@@ -352,10 +219,10 @@ async function requestAssistant() {
     } else {
       bubble.innerHTML = renderMarkdownHtml(streamed);
       attachCodeCopyHandlers(bubble);
-      appendAssistantActions(wrap, streamed);
+      attachAssistantActions(wrap, streamed);
     }
     state.conversation.push({ role: "assistant", content: streamed });
-    saveConversation();
+    saveConversation(state.conversation);
     setStatus(`done · ${state.activeProvider || "?"}`, "ok");
   } catch (err) {
     bubble.classList.remove("cursor");
@@ -363,106 +230,18 @@ async function requestAssistant() {
       setStatus("aborted", "");
       if (streamed) {
         state.conversation.push({ role: "assistant", content: streamed });
-        saveConversation();
+        saveConversation(state.conversation);
       }
     } else {
       bubble.textContent = streamed || `error: ${err.message || String(err)}`;
       wrap.classList.add("error");
-      appendErrorActions(wrap, triedProviders);
+      attachErrorActions(wrap, triedProviders);
       setStatus(err.message || "error", "err");
     }
   } finally {
     setStreaming(false);
     state.controller = null;
   }
-}
-
-function appendAssistantActions(wrap, text) {
-  const actions = document.createElement("div");
-  actions.className = "msg-actions msg-actions-hover";
-
-  const copyBtn = document.createElement("button");
-  copyBtn.type = "button";
-  copyBtn.className = "msg-action";
-  copyBtn.textContent = "⧉ copy";
-  copyBtn.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      copyBtn.textContent = "copied";
-      copyBtn.classList.add("copied");
-      setTimeout(() => {
-        copyBtn.textContent = "⧉ copy";
-        copyBtn.classList.remove("copied");
-      }, 1200);
-    } catch {
-      copyBtn.textContent = "!";
-    }
-  });
-
-  const regenBtn = document.createElement("button");
-  regenBtn.type = "button";
-  regenBtn.className = "msg-action";
-  regenBtn.textContent = "↻ regenerate";
-  regenBtn.addEventListener("click", () => {
-    if (state.streaming) return;
-    // Pop the last assistant from state (matches this bubble) and re-request.
-    const lastAssistantIdx = findLastAssistantIndex();
-    if (lastAssistantIdx >= 0) {
-      state.conversation.splice(lastAssistantIdx, 1);
-      saveConversation();
-    }
-    wrap.remove();
-    void requestAssistant();
-  });
-
-  actions.appendChild(copyBtn);
-  actions.appendChild(regenBtn);
-  wrap.appendChild(actions);
-}
-
-function findLastAssistantIndex() {
-  for (let i = state.conversation.length - 1; i >= 0; i--) {
-    if (state.conversation[i].role === "assistant") return i;
-  }
-  return -1;
-}
-
-function appendErrorActions(wrap, triedProviders) {
-  const actions = document.createElement("div");
-  actions.className = "msg-actions";
-
-  const retryBtn = document.createElement("button");
-  retryBtn.type = "button";
-  retryBtn.className = "msg-action";
-  retryBtn.textContent = "↻ retry";
-  retryBtn.addEventListener("click", () => {
-    if (state.streaming) return;
-    wrap.remove();
-    void requestAssistant();
-  });
-
-  const switchBtn = document.createElement("button");
-  switchBtn.type = "button";
-  switchBtn.className = "msg-action";
-  switchBtn.textContent = "↔ switch provider";
-  switchBtn.addEventListener("click", () => {
-    providerSelect.focus();
-    try {
-      providerSelect.showPicker?.();
-    } catch {}
-  });
-
-  actions.appendChild(retryBtn);
-  actions.appendChild(switchBtn);
-
-  if (triedProviders.length) {
-    const tried = document.createElement("span");
-    tried.className = "msg-tried";
-    tried.textContent = `tried: ${triedProviders.join(" → ")}`;
-    actions.appendChild(tried);
-  }
-
-  wrap.appendChild(actions);
 }
 
 function buildMessagesForSend() {
@@ -477,12 +256,64 @@ function buildMessagesForSend() {
 }
 
 function safeParse(s) {
-  try {
-    return JSON.parse(s);
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(s); } catch { return null; }
 }
+
+// ===== Event wiring =====
+
+providerSelect.addEventListener("change", () => {
+  renderModelOptions();
+  savePreferences({ provider: providerSelect.value, model: modelSelect.value });
+});
+
+modelSelect.addEventListener("change", () => {
+  setLastModel(modelSelect.value);
+  savePreferences({ provider: providerSelect.value, model: modelSelect.value });
+});
+
+newChatBtn.addEventListener("click", () => {
+  if (state.streaming) state.controller?.abort();
+  state.conversation = [];
+  clearStoredConversation();
+  messagesEl.innerHTML = "";
+  setStatus("");
+  showHero();
+  inputEl.focus();
+});
+
+aboutLink.addEventListener("click", (e) => {
+  e.preventDefault();
+  aboutDialog.showModal();
+});
+
+composerEl.addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (state.streaming) {
+    state.controller?.abort();
+    return;
+  }
+  const text = inputEl.value.trim();
+  if (!text) return;
+  inputEl.value = "";
+  autoResize();
+  hideHero();
+  void send(text);
+});
+
+function autoResize() {
+  inputEl.style.height = "auto";
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 220) + "px";
+}
+inputEl.addEventListener("input", autoResize);
+
+inputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    composerEl.requestSubmit();
+  }
+});
+
+// ===== Init =====
 
 function checkDonatedRedirect() {
   const params = new URLSearchParams(location.search);
@@ -504,10 +335,18 @@ function checkDonatedRedirect() {
 }
 
 (async function init() {
-  loadState();
-  renderSuggestions();
-  loadConversation();
+  const prefs = loadPreferences();
+  if (prefs.provider) providerSelect.value = prefs.provider;
+  if (prefs.model) setLastModel(prefs.model);
+
+  renderSuggestions(suggestionsEl, (prompt) => {
+    hideHero();
+    void send(prompt);
+  });
+
+  restoreConversation();
   checkDonatedRedirect();
+
   try {
     await populateModels();
     setStatus("ready · keyless", "ok");
