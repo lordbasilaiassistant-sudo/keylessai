@@ -168,14 +168,20 @@ Those run models locally on your hardware — good for privacy, but require loca
 
     keylessai/
     ├── index.html              chat UI + API drawer + JSON-LD schema
-    ├── app.js                  UI state, composer, messages
-    ├── router.js               provider failover logic
-    ├── api.js                  API reference drawer
+    ├── app.js                  browser entry (orchestration)
+    ├── styles.css              design system
+    ├── src/
+    │   ├── ui/                 browser-only modules (drawer, markdown)
+    │   ├── core/               shared runtime (router, queue, cache)
+    │   ├── server/             Node-only (proxy)
+    │   └── index.js            package export surface
+    ├── bin/keylessai.js        CLI entry
     ├── providers/
     │   ├── pollinations.js     primary (SSE, OpenAI-compatible)
     │   ├── pollinations-get.js secondary (GET, plain text)
-    │   └── airforce.js         ApiAirforce free-tier (SSE, OpenAI-compatible)
-    ├── styles.css              design system
+    │   ├── airforce.js         ApiAirforce free-tier (SSE, OpenAI-compatible)
+    │   └── _catalog.json       daily-synced upstream-working list
+    ├── test/                   cache/queue/markdown test suites
     ├── og-image.svg            1200x630 social preview
     ├── robots.txt
     ├── sitemap.xml
@@ -195,7 +201,7 @@ Those run models locally on your hardware — good for privacy, but require loca
    - `listModels()` → array of `{id, label, provider}`
    - `healthCheck()` → boolean
    - `streamChat({ model, messages, signal })` → async generator yielding `{type: "content", text: string}`
-2. Add it to `router.js` in `PROVIDERS` and `FAILOVER_ORDER`.
+2. Add it to `src/core/router.js` in `PROVIDERS` and `FAILOVER_ORDER`.
 3. Open a PR.
 
 Requirements: the endpoint must be callable from a browser origin (CORS `*` or public relay) and require zero authentication. If it needs a key, token, or cookie, it doesn't belong here.
