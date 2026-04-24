@@ -32,4 +32,4 @@ jobs:
           if [ "$fail" -eq 1 ]; then exit 1; fi
 
       - name: Run test suite
-        run: node --test test/markdown.test.mjs test/cache.test.mjs test/queue.test.mjs test/storage.test.mjs
+        run: node --test test/markdown.test.mjs test/cache.test.mjs test/queue.test.mjs test/storage.test.mjs test/notices.test.mjs
