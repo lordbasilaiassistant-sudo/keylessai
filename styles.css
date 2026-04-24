@@ -532,7 +532,7 @@ main.chat {
   margin-bottom: 4px;
 }
 
-.msg.assistant .bubble code {
+.msg.assistant .bubble :not(pre) > code {
   font-family: var(--mono);
   font-size: 12.8px;
   background: var(--panel-inset);
