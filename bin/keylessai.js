@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 import { createProxy } from "../src/server/proxy.js";
-import { streamChat, PROVIDERS } from "../src/core/router.js";
+import {
+  streamChat,
+  PROVIDERS,
+  FAILOVER_ORDER,
+  slotGate,
+  listAllModels,
+} from "../src/core/router.js";
+import { defaultCache } from "../src/core/cache.js";
 
 const BANNER = String.raw`
   ╭─────────────────────────────────────────────────╮
@@ -30,6 +37,7 @@ Usage:
 Commands:
   serve                 Start a local OpenAI-compatible proxy (default: 127.0.0.1:8787)
   test                  Send a quick test prompt to the provider pool
+  doctor                Diagnose provider health, list models, surface Node version
   help                  Show this message
 
 Options (for 'serve'):
@@ -112,6 +120,69 @@ async function cmdTest() {
   }
 }
 
+async function cmdDoctor() {
+  console.log(BANNER);
+  console.log("  KeylessAI diagnostics\n");
+
+  const nodeVer = process.versions.node;
+  const nodeMajor = parseInt(nodeVer.split(".")[0], 10);
+  console.log(`  node:            v${nodeVer} ${nodeMajor >= 18 ? "✓" : "✗ need >=18"}`);
+  console.log(`  fetch available: ${typeof fetch === "function" ? "✓" : "✗"}`);
+  console.log(`  platform:        ${process.platform}/${process.arch}`);
+  console.log("");
+
+  console.log("  === Provider health checks ===");
+  for (const id of FAILOVER_ORDER) {
+    const p = PROVIDERS[id];
+    const t0 = Date.now();
+    let ok = false;
+    try {
+      ok = await p.healthCheck();
+    } catch {}
+    const ms = Date.now() - t0;
+    console.log(`  ${ok ? "✓" : "✗"}  ${id.padEnd(20)} ${p.label.padEnd(28)} ${ms}ms`);
+  }
+  console.log("");
+
+  console.log("  === Live model lists ===");
+  const groups = await listAllModels();
+  for (const g of groups) {
+    console.log(`  ${g.label} — ${g.models.length} models`);
+    for (const m of g.models.slice(0, 10)) {
+      console.log(`    · ${m.id}`);
+    }
+    if (g.models.length > 10) {
+      console.log(`    · ... and ${g.models.length - 10} more`);
+    }
+  }
+  console.log("");
+
+  console.log("  === Runtime state ===");
+  console.log(`  slot gate depth: ${slotGate.depth}`);
+  console.log(`  cache stats:     ${JSON.stringify(defaultCache.stats())}`);
+  console.log("");
+
+  console.log("  === End-to-end test ===");
+  let out = "";
+  let activeProvider = "?";
+  try {
+    for await (const chunk of streamChat({
+      provider: "auto",
+      messages: [{ role: "user", content: "Reply with only: doctor ok" }],
+      onProviderChange: (p) => {
+        activeProvider = p;
+      },
+    })) {
+      if (chunk.type === "content") out += chunk.text;
+    }
+    console.log(`  ✓ reply from ${activeProvider}: ${out.trim()}\n`);
+    process.exit(0);
+  } catch (e) {
+    console.error(`  ✗ end-to-end failed: ${e.message}\n`);
+    process.exit(1);
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const cmd = args._[0] || "serve";
@@ -122,6 +193,7 @@ async function main() {
   }
   if (cmd === "serve") return cmdServe(args);
   if (cmd === "test") return cmdTest();
+  if (cmd === "doctor") return cmdDoctor();
 
   console.error(`  unknown command: ${cmd}\n`);
   printHelp();
