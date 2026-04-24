@@ -20,29 +20,55 @@ If you run autonomous coding agents, chatbots, or LangChain pipelines, your Open
 
 KeylessAI adds the layer on top of raw Pollinations that makes this usable in production: multi-provider aggregation (Pollinations + [ApiAirforce](https://api.airforce/) today, more as they appear), a client-side single-flight queue so parallel callers don't blow through the 1-concurrent-per-IP limit, and aggressive filtering of the deprecation notices and promo-URL ads that upstream providers occasionally inject into responses.
 
-## The one-liner — public URL, zero install
+## Three ways to use it
+
+Pick whichever fits your context — they share the same router, providers, cache, circuit breaker, and failover logic.
+
+### 1. As a library (zero install, runs in your process)
 
 ```bash
-export OPENAI_API_BASE="https://keylessai.<subdomain>.workers.dev/v1"
-export OPENAI_BASE_URL="https://keylessai.<subdomain>.workers.dev/v1"
-export OPENAI_API_KEY="not-needed"
-# now run your agent — no changes to your code
+npm install github:lordbasilaiassistant-sudo/keylessai
 ```
 
-The public URL hits a Cloudflare Worker that wraps our router: multi-provider pool, adaptive failover, circuit breaker, prompt cache, model-name aliasing (so `gpt-4o`, `claude-3-5-sonnet-latest` etc. resolve automatically), spam/notice filtering, per-IP rate limiting. Free tier serves 100k requests/day and **literally cannot bill the operator** beyond that — it just 429s until tomorrow.
+```js
+import { streamChat } from "keylessai";
 
-> Not deployed yet? Deploy your own copy with `cd worker && npx wrangler deploy` — see [`worker/README.md`](worker/README.md). Once the canonical URL is live, this section will show it.
+for await (const chunk of streamChat({
+  provider: "auto",
+  messages: [{ role: "user", content: "hello" }],
+})) {
+  if (chunk.type === "content") process.stdout.write(chunk.text);
+}
+```
 
-### Opt-in: run a local proxy instead
+Used by [`keylessai-daily`](https://github.com/lordbasilaiassistant-sudo/keylessai-daily) right now — a GitHub Action appends a new LLM-generated entry to its README every day, entirely via this path.
 
-Prefer to run everything on localhost (air-gapped, behind corporate proxy, zero-external-deps)? Start your own:
+### 2. As a local OpenAI-compatible proxy (best for agent tooling)
 
 ```bash
 npx github:lordbasilaiassistant-sudo/keylessai serve --local
-export OPENAI_API_BASE="http://127.0.0.1:8787/v1"
+# → listening on http://127.0.0.1:8787
 ```
 
-Same router, same features, same code — just running in your shell instead of Cloudflare's edge. Use `--port N` to pick a different port, `--host 0.0.0.0` to expose on LAN.
+Then any OpenAI client works unchanged:
+
+```bash
+export OPENAI_API_BASE="http://127.0.0.1:8787/v1"
+export OPENAI_BASE_URL="http://127.0.0.1:8787/v1"
+export OPENAI_API_KEY="not-needed"
+```
+
+### 3. As a public Cloudflare Worker (zero install for your users)
+
+Source is checked in at [`worker/`](worker/). Deploy your own copy:
+
+```bash
+cd worker
+npx wrangler login        # one-time
+npx wrangler deploy
+```
+
+Cloudflare's free tier covers 100k req/day and literally cannot bill you beyond that (429s instead). Your users then just set `OPENAI_API_BASE` to your Worker URL — no install on their side, no keys, no signup.
 
 ## Works with
 
