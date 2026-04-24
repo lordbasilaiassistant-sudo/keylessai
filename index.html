@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KeylessAI — free LLM inference, no API keys</title>
+<meta name="description" content="Chat with GPT, Claude, Llama, Mistral, Gemini and more. Zero keys, zero signup, zero backend. Runs entirely in your browser." />
+<link rel="stylesheet" href="./styles.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%97%9D%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">&#x1F5DD;</span>
+    <span class="title">Keyless</span>
+    <span class="tag">free LLM inference &middot; no keys &middot; no signup</span>
+  </div>
+  <div class="controls">
+    <label class="field">
+      <span>Provider</span>
+      <select id="providerSelect">
+        <option value="auto">auto (failover)</option>
+        <option value="pollinations">pollinations</option>
+        <option value="duckduckgo">duckduckgo</option>
+        <option value="webllm">webllm (in-browser)</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Model</span>
+      <select id="modelSelect"></select>
+    </label>
+    <button id="newChatBtn" class="btn ghost" title="New chat">new</button>
+  </div>
+</header>
+
+<main class="chat">
+  <div id="thanks" class="thanks" hidden>Thanks for supporting KeylessAI &mdash; this literally keeps the lights on. &lt;3</div>
+  <div id="messages" class="messages" aria-live="polite"></div>
+  <div id="status" class="status"></div>
+  <form id="composer" class="composer" autocomplete="off">
+    <textarea id="input" rows="2" placeholder="ask anything. no key. no signup. press enter to send, shift+enter for newline."></textarea>
+    <button type="submit" id="sendBtn" class="btn primary">send</button>
+  </form>
+</main>
+
+<footer class="foot">
+  <div>
+    <a href="https://github.com/lordbasilaiassistant-sudo/keylessai" target="_blank" rel="noopener">source</a>
+    &middot;
+    <a href="#" id="aboutLink">about</a>
+    &middot;
+    <span class="muted">streaming via public endpoints. be kind to them.</span>
+  </div>
+  <div class="donate-row">
+    <span class="muted">donate:</span>
+    <a class="donate-btn" href="https://buy.stripe.com/cNidR2bGo2OD6P3cx58Vi0X" target="_blank" rel="noopener">$3</a>
+    <a class="donate-btn" href="https://buy.stripe.com/14A4gs6m4exl8Xb0On8Vi0Y" target="_blank" rel="noopener">$5</a>
+    <a class="donate-btn" href="https://buy.stripe.com/14AaEQ6m42ODgpD68H8Vi0Z" target="_blank" rel="noopener">$10</a>
+    <a class="donate-btn primary" href="https://buy.stripe.com/5kQ28k9yg88XflzfJh8Vi0W" target="_blank" rel="noopener">you pick</a>
+  </div>
+</footer>
+
+<dialog id="aboutDialog" class="dialog">
+  <article>
+    <h2>What is this?</h2>
+    <p><b>Keyless</b> is a static web app that talks to <em>public, no-auth</em> LLM endpoints. There is no backend. There are no API keys. There is no tracking. The whole thing is a single HTML page served from GitHub Pages.</p>
+    <h3>How is it free?</h3>
+    <ul>
+      <li><b>Pollinations.ai</b> &mdash; invites public use of their inference API. Bandwidth paid by their sponsors.</li>
+      <li><b>DuckDuckGo AI Chat</b> &mdash; keyless after a two-step VQD handshake, routed through a CORS relay.</li>
+      <li><b>WebLLM</b> &mdash; runs open models locally in your browser via WebGPU. Zero network cost, zero privacy exposure.</li>
+    </ul>
+    <h3>If one provider fails?</h3>
+    <p>Set provider to <code>auto</code> and the router retries the next one until something answers.</p>
+    <h3>Will this always work?</h3>
+    <p>Public endpoints change. If everything upstream breaks, switch to <b>webllm</b> and the app still runs &mdash; the model downloads once, then inference is fully local.</p>
+    <h3>Credits</h3>
+    <p>Built with Claude Code by drlor. No warranty, MIT license.</p>
+    <form method="dialog"><button class="btn">close</button></form>
+  </article>
+</dialog>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
