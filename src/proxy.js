@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { streamChat, listAllModels, PROVIDERS } from "../router.js";
+import { defaultCache } from "./cache.js";
 
 const MODEL_ALIASES = {
   "gpt-3.5-turbo": "openai-fast",
@@ -82,6 +83,9 @@ async function handleChatCompletions(req, res, log) {
   const controller = new AbortController();
   req.on("close", () => controller.abort());
 
+  const cacheKey = defaultCache.keyFor({ model, messages });
+  const cached = defaultCache.get(cacheKey);
+
   if (stream) {
     res.writeHead(200, {
       "Content-Type": "text/event-stream; charset=utf-8",
@@ -103,6 +107,30 @@ async function handleChatCompletions(req, res, log) {
       choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }],
     });
 
+    if (cached) {
+      log(`✓ cache hit (${cached.length} chars)`);
+      writeSse({
+        id,
+        object: "chat.completion.chunk",
+        created,
+        model: requestedModel,
+        keylessai_provider: "cache",
+        choices: [{ index: 0, delta: { content: cached }, finish_reason: null }],
+      });
+      writeSse({
+        id,
+        object: "chat.completion.chunk",
+        created,
+        model: requestedModel,
+        keylessai_provider: "cache",
+        choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+      });
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
+    let streamAssembled = "";
     try {
       for await (const chunk of streamChat({
         provider: requestedProvider,
@@ -115,6 +143,7 @@ async function handleChatCompletions(req, res, log) {
         },
       })) {
         if (chunk.type !== "content") continue;
+        streamAssembled += chunk.text;
         writeSse({
           id,
           object: "chat.completion.chunk",
@@ -134,6 +163,7 @@ async function handleChatCompletions(req, res, log) {
       });
       res.write("data: [DONE]\n\n");
       res.end();
+      if (streamAssembled) defaultCache.put(cacheKey, streamAssembled);
     } catch (e) {
       if (!res.writableEnded) {
         writeSse({
@@ -144,6 +174,25 @@ async function handleChatCompletions(req, res, log) {
       }
     }
     return;
+  }
+
+  if (cached) {
+    log(`✓ cache hit (${cached.length} chars, non-stream)`);
+    return sendJson(res, 200, {
+      id,
+      object: "chat.completion",
+      created,
+      model: requestedModel,
+      keylessai_provider: "cache",
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: cached },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: null, completion_tokens: null, total_tokens: null },
+    });
   }
 
   let assembled = "";
@@ -162,6 +211,8 @@ async function handleChatCompletions(req, res, log) {
   } catch (e) {
     return sendError(res, 502, e.message || "upstream failure", "keylessai_upstream_error");
   }
+
+  if (assembled) defaultCache.put(cacheKey, assembled);
 
   sendJson(res, 200, {
     id,
@@ -210,12 +261,17 @@ async function handleModels(req, res) {
   sendJson(res, 200, { object: "list", data });
 }
 
-function handleHealth(req, res) {
+async function handleHealth(req, res) {
+  const { slotGate } = await import("../router.js");
   sendJson(res, 200, {
     status: "ok",
     providers: Object.keys(PROVIDERS),
     aliases: Object.keys(MODEL_ALIASES).length,
-    version: "0.1.0",
+    version: "0.2.0",
+    queue: slotGate
+      ? { depth: slotGate.depth, estimatedWaitMs: slotGate.estimatedWaitMs }
+      : null,
+    cache: defaultCache.stats(),
   });
 }
 
