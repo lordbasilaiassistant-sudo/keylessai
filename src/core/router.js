@@ -51,15 +51,27 @@ export async function listAllModels() {
   return groups;
 }
 
-async function* tryOne({ providerId, model, messages, signal, onStatus }) {
+// Retry budgets differ by failure mode AND by routing mode:
+//
+//   - In `auto` (failover) mode, we want the fastest recovery possible.
+//     Any failure -> instantly try next provider. No same-provider retry,
+//     no delay. The retry budget is the length of FAILOVER_ORDER itself.
+//
+//   - In pinned mode (user picked a specific provider), we respect the pin
+//     and do modest same-provider retries for transient errors. Notices
+//     still bail fast (they rarely clear within seconds).
+const MAX_NOTICE_RETRIES = 2;      // 1 retry for notice, then bail (pinned only)
+const MAX_TRANSIENT_RETRIES = 3;   // for 429/5xx/network hiccups (pinned only)
+const NOTICE_RETRY_DELAY_MS = 100; // effectively "immediate"
+
+async function* tryOne({ providerId, model, messages, signal, onStatus, failFast = false }) {
   const p = PROVIDERS[providerId];
   if (!p) throw new Error(`unknown provider: ${providerId}`);
 
-  const MAX_RETRIES = 3;
   let attempt = 0;
   let lastErr;
 
-  while (attempt < MAX_RETRIES) {
+  while (true) {
     attempt++;
     let chunks = [];
     let noticed = false;
@@ -90,21 +102,37 @@ async function* tryOne({ providerId, model, messages, signal, onStatus }) {
 
     if (!noticed && !erroredInStream) return;
 
+    if (signal?.aborted) throw new Error("aborted");
+
+    // failFast mode (auto routing): never retry same provider. The router's
+    // outer loop will move to the next provider in the pool immediately.
+    if (failFast) {
+      if (erroredInStream) throw erroredInStream;
+      throw new Error(`${providerId}: notice/ad`);
+    }
+
     if (erroredInStream) {
       const msg = String(erroredInStream.message || erroredInStream);
       const retryable =
-        /429|queue full|timeout|502|503|504|network|fetch failed|aborted/i.test(msg);
+        /429|queue full|timeout|502|503|504|network|fetch failed|heartbeat|deadline/i.test(msg);
       lastErr = erroredInStream;
       if (!retryable) throw erroredInStream;
+      if (attempt >= MAX_TRANSIENT_RETRIES) {
+        throw new Error(`${providerId}: transient failures exhausted (${msg})`);
+      }
+      // Real backoff for transient — let rate limits / upstream blips clear.
+      const backoff = 400 * attempt + Math.random() * 300;
+      if (onStatus) onStatus(`retrying in ${Math.round(backoff)}ms…`);
+      await new Promise((r) => setTimeout(r, backoff));
+      continue;
     }
 
-    if (signal?.aborted) throw new Error("aborted");
-    const backoff = 400 * attempt + Math.random() * 300;
-    if (onStatus) onStatus(`retrying in ${Math.round(backoff)}ms…`);
-    await new Promise((r) => setTimeout(r, backoff));
+    // Notice case (pinned mode only): short delay, tight retry budget.
+    if (attempt >= MAX_NOTICE_RETRIES) {
+      throw lastErr || new Error(`${providerId}: persistent notice/ad`);
+    }
+    await new Promise((r) => setTimeout(r, NOTICE_RETRY_DELAY_MS));
   }
-
-  throw lastErr || new Error(`${providerId} gave only notices/errors after ${MAX_RETRIES} tries`);
 }
 
 /**
@@ -140,15 +168,14 @@ export async function* streamChat({
       return;
     }
 
+    // Auto mode: hit providers in FAILOVER_ORDER, no health checks (saves
+    // a /models round-trip per provider), no same-provider retries (failFast),
+    // no delay between providers. First provider that streams actual content
+    // wins; any failure -> immediate jump to the next.
     let lastErr;
     for (const id of FAILOVER_ORDER) {
       const p = PROVIDERS[id];
       try {
-        const healthy = await p.healthCheck();
-        if (!healthy) {
-          lastErr = new Error(`${id} health check failed`);
-          continue;
-        }
         if (onProviderChange) onProviderChange(id);
         if (onStatus) onStatus(`via ${p.label}…`);
         let emitted = false;
@@ -158,6 +185,7 @@ export async function* streamChat({
           messages,
           signal,
           onStatus,
+          failFast: true,
         })) {
           emitted = true;
           yield chunk;
@@ -165,7 +193,7 @@ export async function* streamChat({
         if (emitted) return;
       } catch (e) {
         lastErr = e;
-        if (onStatus) onStatus(`${p.label} failed: ${e.message}. trying next…`);
+        if (onStatus) onStatus(`${p.label} failed: ${e.message}. next provider…`);
       }
     }
     throw lastErr || new Error("all providers failed");
