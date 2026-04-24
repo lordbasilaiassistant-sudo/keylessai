@@ -23,6 +23,18 @@ test("keys depend on model and messages content", () => {
   assert.notEqual(k1, k3);
 });
 
+test("keys include sampling params (temperature, top_p, tools)", () => {
+  const c = new PromptCache();
+  const base = { model: "a", messages: [{ role: "user", content: "hi" }] };
+  const deterministic = c.keyFor({ ...base, temperature: 0 });
+  const creative = c.keyFor({ ...base, temperature: 0.9 });
+  const withTools = c.keyFor({ ...base, tools: [{ type: "function", function: { name: "foo" } }] });
+  const noTemp = c.keyFor(base);
+  assert.notEqual(deterministic, creative);
+  assert.notEqual(deterministic, withTools);
+  assert.notEqual(noTemp, deterministic);
+});
+
 test("TTL expires entries", async () => {
   const c = new PromptCache({ ttlMs: 20 });
   c.put("k", "v");

@@ -109,7 +109,14 @@ async function handleChatCompletionsWithBody(req, res, body, log) {
   const controller = new AbortController();
   req.on("close", () => controller.abort());
 
-  const cacheKey = defaultCache.keyFor({ model, messages });
+  const cacheKey = defaultCache.keyFor({
+    model,
+    messages,
+    temperature: body.temperature,
+    top_p: body.top_p,
+    tools: body.tools,
+    response_format: body.response_format,
+  });
   const cached = defaultCache.get(cacheKey);
 
   if (stream) {
@@ -324,7 +331,7 @@ async function handleModels(req, res) {
 }
 
 async function handleHealth(req, res) {
-  const { slotGate, breaker } = await import("../core/router.js");
+  const { slotGate, breaker, metrics } = await import("../core/router.js");
   const server = req.socket?.server;
   sendJson(res, 200, {
     status: "ok",
@@ -337,6 +344,7 @@ async function handleHealth(req, res) {
     active: server && typeof server.active === "number" ? server.active : null,
     cache: defaultCache.stats(),
     circuit: breaker ? breaker.stats() : null,
+    latency: metrics ? metrics.stats() : null,
   });
 }
 
