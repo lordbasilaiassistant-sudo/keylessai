@@ -41,11 +41,32 @@ function sendError(res, status, message, type = "keylessai_error") {
   sendJson(res, status, { error: { message, type } });
 }
 
+const MAX_BODY_BYTES = 1_048_576; // 1 MiB — prevents OOM from hostile/huge POSTs
+
 async function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on("data", (c) => chunks.push(c));
+    let received = 0;
+    let aborted = false;
+    req.on("data", (c) => {
+      if (aborted) return;
+      received += c.length;
+      if (received > MAX_BODY_BYTES) {
+        aborted = true;
+        const err = new Error(
+          `request body exceeds ${MAX_BODY_BYTES} bytes`
+        );
+        err.httpStatus = 413;
+        err.httpType = "payload_too_large";
+        // Pause to stop consuming further data but keep the socket alive so
+        // the caller can actually receive the 413 response.
+        try { req.pause(); } catch {}
+        return reject(err);
+      }
+      chunks.push(c);
+    });
     req.on("end", () => {
+      if (aborted) return;
       const raw = Buffer.concat(chunks).toString("utf8");
       if (!raw) return resolve({});
       try {
@@ -63,7 +84,9 @@ async function handleChatCompletions(req, res, log) {
   try {
     body = await readBody(req);
   } catch (e) {
-    return sendError(res, 400, e.message, "invalid_request_error");
+    const status = e.httpStatus || 400;
+    const type = e.httpType || "invalid_request_error";
+    return sendError(res, status, e.message, type);
   }
   return handleChatCompletionsWithBody(req, res, body, log);
 }
@@ -301,7 +324,7 @@ async function handleModels(req, res) {
 }
 
 async function handleHealth(req, res) {
-  const { slotGate } = await import("../core/router.js");
+  const { slotGate, breaker } = await import("../core/router.js");
   sendJson(res, 200, {
     status: "ok",
     providers: Object.keys(PROVIDERS),
@@ -311,6 +334,7 @@ async function handleHealth(req, res) {
       ? { depth: slotGate.depth, estimatedWaitMs: slotGate.estimatedWaitMs }
       : null,
     cache: defaultCache.stats(),
+    circuit: breaker ? breaker.stats() : null,
   });
 }
 
