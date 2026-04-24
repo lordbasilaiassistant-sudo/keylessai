@@ -1,0 +1,15 @@
+# CODEOWNERS auto-requests review from the listed owners on any PR that
+# touches the matching paths.
+
+# Default catchall
+*                           @lordbasilaiassistant-sudo
+
+# Security-sensitive paths get explicit routing so they can never be
+# reviewed by someone other than the maintainer.
+/src/core/               @lordbasilaiassistant-sudo
+/src/server/             @lordbasilaiassistant-sudo
+/providers/              @lordbasilaiassistant-sudo
+/SECURITY.md             @lordbasilaiassistant-sudo
+/.github/workflows/      @lordbasilaiassistant-sudo
+/.github/dependabot.yml  @lordbasilaiassistant-sudo
+/.well-known/            @lordbasilaiassistant-sudo
