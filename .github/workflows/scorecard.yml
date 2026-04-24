@@ -1,0 +1,38 @@
+name: OpenSSF Scorecard
+
+# Scores the project against OpenSSF best-practices (branch protection,
+# dependency pinning, SAST enabled, token permissions, etc.). Results
+# upload to the Security tab and to the public Scorecard badge endpoint.
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: '23 6 * * 1'  # Mondays 06:23 UTC
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run scorecard
+        uses: ossf/scorecard-action@v2.4.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload SARIF to GitHub
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
