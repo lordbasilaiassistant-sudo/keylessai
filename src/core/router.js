@@ -10,6 +10,9 @@ import * as pollinationsGet from "../../providers/pollinations-get.js";
 import * as airforce from "../../providers/airforce.js";
 import { defaultSlotGate } from "./queue.js";
 import { looksLikeNotice } from "./notices.js";
+import { defaultBreaker } from "./circuit.js";
+
+export const breaker = defaultBreaker;
 
 /** Registry of all installed providers, keyed by their `id`. */
 export const PROVIDERS = {
@@ -172,9 +175,16 @@ export async function* streamChat({
     // a /models round-trip per provider), no same-provider retries (failFast),
     // no delay between providers. First provider that streams actual content
     // wins; any failure -> immediate jump to the next.
+    // Circuit breaker skips providers that have failed 5+ times in a row
+    // for 30 seconds.
     let lastErr;
     for (const id of FAILOVER_ORDER) {
       const p = PROVIDERS[id];
+      if (breaker.isOpen(id)) {
+        if (onStatus) onStatus(`${p.label} circuit open — skipping`);
+        lastErr = new Error(`${id}: circuit open`);
+        continue;
+      }
       try {
         if (onProviderChange) onProviderChange(id);
         if (onStatus) onStatus(`via ${p.label}…`);
@@ -190,9 +200,14 @@ export async function* streamChat({
           emitted = true;
           yield chunk;
         }
-        if (emitted) return;
+        if (emitted) {
+          breaker.succeed(id);
+          return;
+        }
+        breaker.fail(id);
       } catch (e) {
         lastErr = e;
+        breaker.fail(id);
         if (onStatus) onStatus(`${p.label} failed: ${e.message}. next provider…`);
       }
     }
