@@ -26,7 +26,7 @@
   ],
   "scripts": {
     "serve": "node ./bin/keylessai.js serve",
-    "test": "node --test test/markdown.test.mjs test/cache.test.mjs test/queue.test.mjs",
+    "test": "node --test test/markdown.test.mjs test/cache.test.mjs test/queue.test.mjs test/storage.test.mjs",
     "live-test": "node ./bin/keylessai.js test"
   },
   "keywords": [
