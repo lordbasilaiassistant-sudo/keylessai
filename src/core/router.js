@@ -9,6 +9,7 @@ import * as pollinations from "../../providers/pollinations.js";
 import * as pollinationsGet from "../../providers/pollinations-get.js";
 import * as airforce from "../../providers/airforce.js";
 import { defaultSlotGate } from "./queue.js";
+import { looksLikeNotice } from "./notices.js";
 
 /** Registry of all installed providers, keyed by their `id`. */
 export const PROVIDERS = {
@@ -30,29 +31,6 @@ export const FAILOVER_ORDER = [
  * rate limit. Exposed for observability (`gate.depth`, `gate.estimatedWaitMs`).
  */
 export const slotGate = defaultSlotGate;
-
-const NOTICE_PATTERNS = [
-  /important notice/i,
-  /legacy .{0,40}api is being deprecated/i,
-  /please migrate to/i,
-  /enter\.pollinations\.ai/i,
-  /upgrade your plan/i,
-  /discord\.gg\/airforce/i,
-  /\bapi\.airforce\b/i,
-  /need proxies cheaper than/i,
-  /op\.wtf/i,
-  /remove this message at/i,
-];
-
-function looksLikeNotice(text) {
-  if (!text) return false;
-  const sample = text.slice(0, 600);
-  const hits = NOTICE_PATTERNS.filter((re) => re.test(sample)).length;
-  if (hits >= 2) return true;
-  const hasAnyUrl = /https?:\/\//i.test(sample);
-  const looksShortAndMostlyLinks = sample.length < 300 && hasAnyUrl && hits >= 1;
-  return looksShortAndMostlyLinks;
-}
 
 /**
  * Lists models from every registered provider.
