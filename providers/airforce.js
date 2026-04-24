@@ -1,4 +1,9 @@
+import { readWithWatchdog, combineSignalWithTimeout } from "../src/core/stream.js";
+
 const BASE = "https://api.airforce/v1";
+const FETCH_TIMEOUT_MS = 30000;
+const HEARTBEAT_MS = 45000;
+const DEADLINE_MS = 180000;
 
 export const id = "airforce";
 export const label = "ApiAirforce";
@@ -57,16 +62,22 @@ function stripThinkTags(text) {
 }
 
 export async function* streamChat({ model, messages, signal }) {
-  const res = await fetch(`${BASE}/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: model || "grok-4.1-mini:free",
-      messages,
-      stream: true,
-    }),
-    signal,
-  });
+  const { signal: fetchSignal, dispose } = combineSignalWithTimeout(signal, FETCH_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(`${BASE}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: model || "grok-4.1-mini:free",
+        messages,
+        stream: true,
+      }),
+      signal: fetchSignal,
+    });
+  } finally {
+    dispose();
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -79,9 +90,11 @@ export async function* streamChat({ model, messages, signal }) {
   let buffer = "";
   let inThinkBlock = false;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  for await (const value of readWithWatchdog(reader, {
+    signal,
+    heartbeatMs: HEARTBEAT_MS,
+    deadlineMs: DEADLINE_MS,
+  })) {
     buffer += decoder.decode(value, { stream: true });
 
     let idx;
