@@ -1,0 +1,7 @@
+# KeylessAI security contact (RFC 9116)
+
+Contact: mailto:drlordbasil@gmail.com
+Expires: 2027-04-24T00:00:00Z
+Preferred-Languages: en
+Canonical: https://lordbasilaiassistant-sudo.github.io/keylessai/.well-known/security.txt
+Policy: https://github.com/lordbasilaiassistant-sudo/keylessai/blob/main/SECURITY.md

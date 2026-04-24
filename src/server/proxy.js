@@ -6,6 +6,7 @@ import {
   validateCompletionsBody,
   ValidationError,
 } from "./validate.js";
+import { defaultLimiter, clientIp } from "./ratelimit.js";
 
 const MODEL_ALIASES = {
   "gpt-3.5-turbo": "openai-fast",
@@ -363,6 +364,7 @@ async function handleHealth(req, res) {
     cache: defaultCache.stats(),
     circuit: breaker ? breaker.stats() : null,
     latency: metrics ? metrics.stats() : null,
+    rateLimiter: defaultLimiter.stats(),
   });
 }
 
@@ -432,6 +434,22 @@ export function createProxy({ log = console.log } = {}) {
 
     const url = new URL(req.url, "http://localhost");
     const path = url.pathname.replace(/\/+$/, "") || "/";
+
+    // Rate-limit POST endpoints (the expensive ones). GET /health + /models
+    // + / are cheap diagnostics, leave them open.
+    if (req.method === "POST") {
+      const ip = clientIp(req);
+      const verdict = defaultLimiter.check(ip);
+      if (!verdict.allowed) {
+        res.setHeader("Retry-After", String(verdict.retryAfterSec));
+        return sendError(
+          res,
+          429,
+          `rate limit exceeded for ${safeLog(ip)} (retry after ${verdict.retryAfterSec}s)`,
+          "rate_limit_exceeded"
+        );
+      }
+    }
 
     try {
       if (req.method === "POST" && (path === "/v1/chat/completions" || path === "/chat/completions")) {
