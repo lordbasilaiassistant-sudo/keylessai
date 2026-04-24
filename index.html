@@ -11,7 +11,7 @@
 <meta name="robots" content="index, follow, max-image-preview:large" />
 <meta name="theme-color" content="#07080b" />
 
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https://text.pollinations.ai https://api.airforce; form-action 'self' https://buy.stripe.com; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https://keylessai.thryx.workers.dev https://text.pollinations.ai https://api.airforce https://api.binjie.fun; form-action 'self' https://buy.stripe.com; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests" />
 <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
 <meta http-equiv="X-Content-Type-Options" content="nosniff" />
 <meta name="permissions-policy" content="geolocation=(), microphone=(), camera=(), payment=(), usb=()" />
@@ -39,18 +39,20 @@
   "url": "https://lordbasilaiassistant-sudo.github.io/keylessai/",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Any (browser)",
-  "description": "Free LLM inference with zero API keys. Drop-in OpenAI-compatible replacement that aggregates public no-auth endpoints (Pollinations, ApiAirforce) with automatic failover, client-side queueing, and spam/notice filtering.",
+  "description": "Free LLM inference with zero API keys. Drop-in OpenAI-compatible endpoint live at https://keylessai.thryx.workers.dev/v1. Adaptively fails over across four keyless upstream providers (Pollinations SSE, Pollinations GET, ApiAirforce, Yqcloud) with input validation, prompt cache, circuit breaker, per-IP rate limiting, and ad/notice filtering — all at the edge on Cloudflare Workers.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
   "author": { "@type": "Person", "name": "drlor" },
   "license": "https://opensource.org/licenses/MIT",
-  "softwareRequirements": "Modern browser (no local GPU or install required)",
+  "softwareRequirements": "Modern browser or any OpenAI-compatible client (no local GPU or install required)",
   "featureList": [
-    "OpenAI-compatible chat completions endpoint",
+    "Public Worker endpoint at https://keylessai.thryx.workers.dev/v1 — zero install, zero signup, zero keys",
+    "OpenAI-compatible /v1/chat/completions, /v1/completions, /v1/models, /health",
     "Streaming SSE responses",
-    "Works with Aider, Cline, Continue.dev, Codex, LangChain, OpenAI SDK",
-    "Multi-provider aggregation with automatic failover (Pollinations, ApiAirforce)",
-    "Client-side single-flight queue to stay under per-IP rate limits",
-    "Automatic detection + retry when providers inject ads or deprecation notices",
+    "Works with Aider, Cline, Continue.dev, Codex, LangChain, OpenAI SDK, LiteLLM",
+    "Adaptive multi-provider failover across 4 keyless upstreams (Pollinations SSE, Pollinations GET, ApiAirforce, Yqcloud)",
+    "Model aliasing — send gpt-4o / gpt-4o-mini / claude-3-5-sonnet-latest and we route to openai-fast",
+    "Prompt cache, circuit breaker, single-flight queue, per-IP rate limiter",
+    "Input validation — prototype-pollution block, 1 MiB body cap, role whitelist, tool-call schema check",
     "Zero API keys, zero signup, zero user compute"
   ]
 }
@@ -64,7 +66,7 @@
   "url": "https://lordbasilaiassistant-sudo.github.io/keylessai/",
   "potentialAction": {
     "@type": "SearchAction",
-    "target": "https://text.pollinations.ai/{search_term_string}?model=openai-fast",
+    "target": "https://keylessai.thryx.workers.dev/v1/chat/completions?q={search_term_string}",
     "query-input": "required name=search_term_string"
   }
 }
@@ -80,7 +82,7 @@
       "name": "What is KeylessAI?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "KeylessAI is a drop-in OpenAI-compatible LLM endpoint that requires no API key, no signup, and no backend. Point any OpenAI client at https://text.pollinations.ai with any non-empty string as the API key, and existing OpenAI code works unchanged."
+        "text": "KeylessAI is a drop-in OpenAI-compatible LLM endpoint that requires no API key, no signup, and no backend. Point any OpenAI client at https://keylessai.thryx.workers.dev/v1 with any non-empty string as the API key, and existing OpenAI code works unchanged."
       }
     },
     {
@@ -88,7 +90,7 @@
       "name": "How do I use KeylessAI with Aider?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Set environment variables: OPENAI_API_BASE=https://text.pollinations.ai, OPENAI_API_KEY=not-needed. Then run: aider --model openai/openai-fast"
+        "text": "Set environment variables: OPENAI_API_BASE=https://keylessai.thryx.workers.dev/v1, OPENAI_API_KEY=not-needed. Then run: aider --model openai/openai-fast"
       }
     },
     {
@@ -96,7 +98,7 @@
       "name": "How do I use KeylessAI with Cline, Roo Code, or Continue.dev?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "All three accept a custom OpenAI base URL. In VS Code settings, set the provider to openai, baseUrl to https://text.pollinations.ai, apiKey to not-needed, and model to openai-fast."
+        "text": "All three accept a custom OpenAI base URL. In VS Code settings, set the provider to openai, baseUrl to https://keylessai.thryx.workers.dev/v1, apiKey to not-needed, and model to openai-fast."
       }
     },
     {
@@ -104,7 +106,7 @@
       "name": "How do I use KeylessAI with LangChain?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Use langchain_openai.ChatOpenAI with base_url set to https://text.pollinations.ai and api_key set to any non-empty string. Model: openai-fast."
+        "text": "Use langchain_openai.ChatOpenAI with base_url set to https://keylessai.thryx.workers.dev/v1 and api_key set to any non-empty string. Model: openai-fast."
       }
     },
     {
@@ -112,7 +114,7 @@
       "name": "Does KeylessAI work with Claude Code?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Not directly — Claude Code speaks Anthropic's Messages API, not OpenAI chat-completions. Bridge through LiteLLM proxy: install litellm[proxy], configure a model_list that maps Anthropic model names to openai/openai-fast at api_base https://text.pollinations.ai, run litellm --config config.yaml --port 4000, then set ANTHROPIC_BASE_URL=http://localhost:4000. See examples/claude-code-bridge.md in the repo."
+        "text": "Not directly — Claude Code speaks Anthropic's Messages API, not OpenAI chat-completions. Bridge through LiteLLM proxy: install litellm[proxy], configure a model_list that maps Anthropic model names to openai/openai-fast at api_base https://keylessai.thryx.workers.dev/v1, run litellm --config config.yaml --port 4000, then set ANTHROPIC_BASE_URL=http://localhost:4000. See examples/claude-code-bridge.md in the repo."
       }
     },
     {
@@ -120,7 +122,7 @@
       "name": "What model does KeylessAI provide?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "The anonymous tier provides openai-fast, which is GPT-OSS 20B served by Pollinations.ai. It supports tool calling and emits reasoning tokens. Good for prototyping, boilerplate, classification, and small agent loops — not a replacement for GPT-4 or Claude 3.5 on hard reasoning."
+        "text": "The anonymous tier provides openai-fast, which is GPT-OSS 20B served by Pollinations.ai (and aliased to gpt-4o, gpt-4o-mini, claude-3-5-sonnet-latest, and 10 other popular model names). It supports tool calling and emits reasoning tokens. Good for prototyping, boilerplate, classification, and small agent loops — not a replacement for GPT-4 or Claude 3.5 on hard reasoning."
       }
     },
     {
@@ -128,7 +130,7 @@
       "name": "Is KeylessAI really free?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. There are no API keys, no signup, no credit card, no email required. The project is MIT-licensed and hosted on GitHub Pages. Inference is served by public no-auth endpoints: primarily Pollinations.ai (sponsor-funded) and ApiAirforce (free tier). No user compute required."
+        "text": "Yes. There are no API keys, no signup, no credit card, no email required. The project is MIT-licensed. The public Worker is hosted on Cloudflare's free tier at https://keylessai.thryx.workers.dev/v1. Inference is served by four keyless no-auth upstreams: Pollinations SSE, Pollinations GET, ApiAirforce, and Yqcloud. No user compute required."
       }
     },
     {
@@ -136,7 +138,7 @@
       "name": "What happens if one of the backends is rate-limited or down?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "KeylessAI's router automatically fails over to the next provider in the pool. It also implements a client-side single-flight queue so parallel callers serialize cleanly under Pollinations' 1-concurrent-per-IP limit, and detects when a provider injects promo URLs or deprecation notices and retries with backoff up to three times before switching providers."
+        "text": "KeylessAI's router automatically fails over to the next provider in the pool, re-ranked every request by live success rate and TTFB. A single-flight queue serializes parallel callers under Pollinations' 1-concurrent-per-IP limit, a circuit breaker skips providers after five consecutive failures (30 s cooldown), a per-IP rate limiter protects the Worker, and promo-URL / deprecation-notice injections are detected and retried with backoff up to three times before switching providers."
       }
     }
   ]
@@ -154,7 +156,7 @@
     {
       "@type": "HowToStep",
       "name": "Set the base URL",
-      "text": "Set OPENAI_API_BASE and OPENAI_BASE_URL environment variables to https://text.pollinations.ai"
+      "text": "Set OPENAI_API_BASE and OPENAI_BASE_URL environment variables to https://keylessai.thryx.workers.dev/v1"
     },
     {
       "@type": "HowToStep",
@@ -177,7 +179,7 @@
 
 <link rel="stylesheet" href="./styles.css" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23a8ffda'/%3E%3Cpath d='M12 8v7h-4v2h4v7h2v-7h4v-2h-4V8z' fill='%2307080b'/%3E%3Ccircle cx='22' cy='16' r='3' fill='%2307080b'/%3E%3C/svg%3E" />
-<link rel="preconnect" href="https://text.pollinations.ai" />
+<link rel="preconnect" href="https://keylessai.thryx.workers.dev" />
 </head>
 <body>
 <header class="topbar">
@@ -195,6 +197,8 @@
         <option value="auto">auto (failover)</option>
         <option value="pollinations">pollinations</option>
         <option value="pollinations-get">pollinations (get)</option>
+        <option value="airforce">airforce</option>
+        <option value="yqcloud">yqcloud</option>
       </select>
     </label>
     <label class="field">
@@ -211,7 +215,7 @@
 
   <section id="hero" class="hero">
     <h1>Keyless<span class="accent">AI</span> &mdash; free LLM inference, <br/>with zero API keys.</h1>
-    <p class="hero-sub">Chat below, or drop <code>https://text.pollinations.ai</code> into your <code>OPENAI_API_BASE</code> and use any string as the key. Your existing OpenAI code, Aider, Cline, Codex, LangChain &mdash; all work. Zero signup. Zero compute on your end. Click <code>&lt;/&gt; API</code> for exact snippets.</p>
+    <p class="hero-sub">Chat below, or drop <code>https://keylessai.thryx.workers.dev/v1</code> into your <code>OPENAI_API_BASE</code> and use any string as the key. Your existing OpenAI code, Aider, Cline, Codex, LangChain &mdash; all work. Zero signup. Zero compute on your end. Click <code>&lt;/&gt; API</code> for exact snippets.</p>
     <div id="pool-stats" class="pool-stats" hidden>
       <span class="pool-stat"><b id="pool-live-providers">&mdash;</b> endpoints &middot; <b id="pool-live-models">&mdash;</b> models <span class="pool-label">live &amp; verified keyless</span></span>
       <span class="pool-sep">/</span>

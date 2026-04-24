@@ -378,7 +378,7 @@ async function handleHealth(req, res) {
     status: "ok",
     providers: Object.keys(PROVIDERS),
     aliases: Object.keys(MODEL_ALIASES).length,
-    version: "0.2.1",
+    version: "0.3.0",
     queue: slotGate
       ? { depth: slotGate.depth, estimatedWaitMs: slotGate.estimatedWaitMs }
       : null,

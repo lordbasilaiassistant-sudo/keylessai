@@ -23,7 +23,7 @@ Most AI coding tools accept a custom OpenAI base URL. Set these environment vari
     OPENAI_API_KEY=not-needed
     OPENAI_MODEL=openai-fast
 
-Any non-empty string works as the API key. The endpoint is `https://keylessai.thryx.workers.dev/v1/openai`. The protocol is the standard OpenAI chat-completions API (both non-streaming and streaming SSE).
+Any non-empty string works as the API key. The endpoint is `https://keylessai.thryx.workers.dev/v1/chat/completions`. The protocol is the standard OpenAI chat-completions API (both non-streaming and streaming SSE).
 
 ## What model does the free tier give me?
 

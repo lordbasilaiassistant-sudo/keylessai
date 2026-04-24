@@ -2,7 +2,7 @@
 # KeylessAI via raw curl — streaming SSE chat completions.
 # Zero API keys. Pipe the output to any text processor.
 
-curl -N https://text.pollinations.ai/openai \
+curl -N https://keylessai.thryx.workers.dev/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d @- <<'EOF'
 {

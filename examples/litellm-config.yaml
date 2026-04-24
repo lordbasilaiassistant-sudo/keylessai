@@ -3,17 +3,17 @@
 # litellm --config litellm-config.yaml --port 4000
 
 model_list:
-  # Free tier via KeylessAI / Pollinations anonymous
+  # Free tier via KeylessAI public Worker (OpenAI-compatible).
   - model_name: openai-fast
     litellm_params:
       model: openai/openai-fast
-      api_base: https://text.pollinations.ai
+      api_base: https://keylessai.thryx.workers.dev/v1
       api_key: not-needed
 
   - model_name: gpt-4o-mini-free
     litellm_params:
       model: openai/openai-fast
-      api_base: https://text.pollinations.ai
+      api_base: https://keylessai.thryx.workers.dev/v1
       api_key: not-needed
 
   # Pin the KeylessAI endpoint as the default openai route —
@@ -22,7 +22,7 @@ model_list:
   - model_name: "*"
     litellm_params:
       model: openai/openai-fast
-      api_base: https://text.pollinations.ai
+      api_base: https://keylessai.thryx.workers.dev/v1
       api_key: not-needed
 
 general_settings:
