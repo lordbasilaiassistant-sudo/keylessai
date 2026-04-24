@@ -140,7 +140,7 @@ Pollinations is a public service. Expect occasional 429s or transient 5xx during
 
 1. Retry with 1-3s backoff (tool-specific or manual).
 2. Switch to the GET transport: `GET https://text.pollinations.ai/{URL_ENCODED_PROMPT}?model=openai-fast` &mdash; returns plain text, not OpenAI-shape, but often up when the SSE path is congested.
-3. For a fully local fallback with no public dependency, use [WebLLM](https://github.com/mlc-ai/web-llm) in-browser or [llama.cpp](https://github.com/ggerganov/llama.cpp) / [Ollama](https://ollama.com/) in-process &mdash; this repo demonstrates WebLLM integration in [`providers/webllm.js`](providers/webllm.js).
+3. For a fully local fallback with no public dependency, run your own [llama.cpp](https://github.com/ggerganov/llama.cpp) / [Ollama](https://ollama.com/) / [LM Studio](https://lmstudio.ai/) outside KeylessAI. The KeylessAI product pitch is "zero user compute" &mdash; we do not ship local-inference providers.
 
 ---
 
@@ -192,7 +192,7 @@ keylessai/
 ├── providers/
 │   ├── pollinations.js     primary (SSE, OpenAI-compatible)
 │   ├── pollinations-get.js secondary (GET, plain text)
-│   └── webllm.js           in-browser WebGPU (lazy-loaded)
+│   └── airforce.js         ApiAirforce free-tier (SSE, OpenAI-compatible)
 ├── styles.css              design system
 ├── og-image.svg            1200x630 social preview
 ├── robots.txt              indexing rules

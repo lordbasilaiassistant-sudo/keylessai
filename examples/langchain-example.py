@@ -29,7 +29,7 @@ def main() -> None:
     chain = prompt | llm
 
     print("[KeylessAI] streaming response:\n")
-    for chunk in chain.stream({"question": "Explain WebGPU to a backend dev in 2 sentences."}):
+    for chunk in chain.stream({"question": "Explain server-sent events to a backend dev in 2 sentences."}):
         print(chunk.content, end="", flush=True)
     print()
 

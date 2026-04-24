@@ -289,7 +289,7 @@ function buildMessagesForSend() {
     {
       role: "system",
       content:
-        "You are KeylessAI, a helpful assistant accessed through free public endpoints. Keep answers concise and useful. If asked, be transparent that you're running without API keys via Pollinations or a local WebLLM model.",
+        "You are KeylessAI, a helpful assistant accessed through free public LLM endpoints (no API keys required on the user's side). Keep answers concise and useful. If asked about the infrastructure, explain that you're served by keyless providers like Pollinations or ApiAirforce, aggregated with automatic failover.",
     },
     ...state.conversation,
   ];

@@ -1,6 +1,6 @@
 # KeylessAI &mdash; Free OpenAI API Alternative (No API Key Required)
 
-> **A drop-in OpenAI-compatible endpoint with zero API keys, zero signup, zero cost, and zero centralized backend.** Run one command &mdash; `npx github:lordbasilaiassistant-sudo/keylessai serve` &mdash; and you have a local OpenAI-compatible proxy that works with Aider, Cline, Continue.dev, LangChain, the official OpenAI SDK, Codex, and anything else that speaks the OpenAI chat-completions protocol. Plus a browser chat and in-browser WebLLM for fully offline inference.
+> **A drop-in OpenAI-compatible endpoint with zero API keys, zero signup, zero cost, and zero user compute.** Swap one env var &mdash; `OPENAI_API_BASE=https://text.pollinations.ai` &mdash; and your existing OpenAI code, Aider, Cline, Continue.dev, LangChain, Codex, and anything else that speaks the OpenAI chat-completions protocol just works. Plus a hosted browser chat and an optional local proxy for model-name aliasing + auto-failover across keyless providers.
 
 [![Deploy to GitHub Pages](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/deploy.yml/badge.svg)](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/deploy.yml)
 [![Live](https://img.shields.io/badge/live-keylessai-a8ffda?style=flat-square&logo=github)](https://lordbasilaiassistant-sudo.github.io/keylessai/)
@@ -14,9 +14,9 @@
 
 ## Why this exists
 
-If you run autonomous coding agents, chatbots, or LangChain pipelines locally, your OpenAI bill can easily hit **hundreds to thousands a month**. KeylessAI routes those same calls to **public, no-auth LLM endpoints** &mdash; most notably [Pollinations.ai](https://pollinations.ai), which exposes an OpenAI-compatible chat endpoint on their anonymous tier. Swap one env var; your agent bill goes to $0.
+If you run autonomous coding agents, chatbots, or LangChain pipelines, your OpenAI bill can easily hit **hundreds to thousands a month**. KeylessAI routes those same calls to **public, no-auth LLM endpoints** &mdash; most notably [Pollinations.ai](https://pollinations.ai), which exposes an OpenAI-compatible chat endpoint on their anonymous tier. Swap one env var; your agent bill goes to $0.
 
-When the public endpoints are rate-limited, KeylessAI's in-browser chat UI can fall back to [WebLLM](https://github.com/mlc-ai/web-llm) and run Llama / Qwen / Phi / SmolLM on your own GPU.
+KeylessAI adds the layer on top of raw Pollinations that makes this usable in production: multi-provider aggregation (Pollinations + [ApiAirforce](https://api.airforce/) today, more as they appear), a client-side single-flight queue so parallel callers don't blow through the 1-concurrent-per-IP limit, and aggressive filtering of the deprecation notices and promo-URL ads that upstream providers occasionally inject into responses.
 
 ## The one-liner (run this)
 
@@ -110,7 +110,7 @@ llm = ChatOpenAI(
     model="gpt-4o",  # aliased
     streaming=True,
 )
-for chunk in llm.stream("Explain WebGPU in 2 sentences."):
+for chunk in llm.stream("Explain server-sent events in 2 sentences."):
     print(chunk.content, end="", flush=True)
 ```
 
@@ -125,25 +125,24 @@ curl http://127.0.0.1:8787/v1/models
 ### Hosted: the browser chat + docs
 https://lordbasilaiassistant-sudo.github.io/keylessai/
 
-- Chat UI with provider/model selectors, automatic failover
+- Chat UI with provider/model selectors and automatic failover
 - `</>API` drawer with copy-paste snippets for every supported tool
-- In-browser WebLLM mode (lazy-loaded, only if you pick it)
 
-### Library pool the chat routes through
+### Provider pool the chat + proxy route through
 
-| Provider | Auth? | Transport | Model |
+| Provider | Auth? | Transport | Model(s) |
 |---|---|---|---|
 | **Pollinations.ai `/openai`** | None &mdash; `Access-Control-Allow-Origin: *` | SSE streaming, OpenAI-compatible | `openai-fast` (GPT-OSS 20B, tool-capable, reasoning) |
-| **Pollinations.ai `/{prompt}`** | None | Plain GET, non-streaming | Same &mdash; secondary transport |
-| **WebLLM (in-browser)** | None &mdash; WebGPU, fully local | Offline after model download | Llama-3.2 1B/3B, Qwen2.5 1.5B, Phi-3.5-mini, SmolLM2 1.7B |
+| **ApiAirforce `/v1/chat/completions`** | None &mdash; CORS open | SSE streaming, OpenAI-compatible | `grok-4.1-mini:free`, `step-3.5-flash:free`, `gemma3-270m:free`, `moirai-agent`, `translategemma-27b` |
+| **Pollinations.ai `/{prompt}`** | None | Plain GET, non-streaming | Secondary transport, same model |
 
-The router retries providers in order on any failure. You can also pin a specific one.
+The router retries providers in order on any failure, serializes calls through a single-flight queue to stay under per-IP rate limits, and auto-detects ad injections / deprecation notices with retry-then-failover. You can also pin a specific provider.
 
 ## Honest caveats
 
 - **The anonymous tier is not GPT-4.** It's `openai-fast` / GPT-OSS 20B &mdash; genuinely good at prototyping, glue code, Q&A, JSON emission, and small agent loops. It won't beat Claude 3.5 or GPT-4o on hard reasoning or long-context coding. If your agent needs that, use this for the 90% of cheap calls and reserve your paid key for the hard ones.
-- **Public endpoints are public endpoints.** Pollinations is free because their sponsors cover bandwidth. Be respectful &mdash; don't hammer it with 1000 rps from a hot loop. If you're building a product that relies on this, either self-host Pollinations or fall back to WebLLM for load.
-- **Privacy.** Calls to Pollinations leave your machine &mdash; treat them like any third-party LLM call. For full privacy, use WebLLM and everything stays local.
+- **Public endpoints are public endpoints.** Pollinations and ApiAirforce are free because their sponsors cover bandwidth. Be respectful &mdash; don't hammer them with 1000 rps from a hot loop. If you're building a product that relies on this, self-host Pollinations (their code is open source) or add more providers to the pool.
+- **Privacy.** Calls to the upstream providers leave your machine &mdash; treat them like any third-party LLM call. For full privacy, use a local-only stack (llama.cpp, Ollama, LM Studio) outside KeylessAI.
 
 ## Self-host
 
@@ -165,7 +164,7 @@ Click `</> API` on the live site to see:
 - **Raw HTTP** &mdash; curl, fetch, Python requests for streaming SSE
 - **Simple GET** &mdash; URL-encoded prompt, plain-text response
 - **Model listing** &mdash; which anonymous-tier models are currently available
-- **WebLLM** &mdash; browser + npm usage
+- **ApiAirforce direct** &mdash; secondary provider, curl + SDK examples
 
 Every snippet has a one-click **copy** button.
 
@@ -191,8 +190,9 @@ See the [issues tab](https://github.com/lordbasilaiassistant-sudo/keylessai/issu
 
 ## Credits
 
-- [Pollinations.ai](https://pollinations.ai/) &mdash; public text generation API
-- [MLC-AI WebLLM](https://github.com/mlc-ai/web-llm) &mdash; in-browser WebGPU inference
+- [Pollinations.ai](https://pollinations.ai/) &mdash; public keyless text generation API
+- [ApiAirforce](https://api.airforce/) &mdash; free-tier OpenAI-compatible endpoint
+- [Free-AI-Things/g4f-working](https://github.com/Free-AI-Things/g4f-working) &mdash; daily-maintained list of currently-working keyless providers
 - Built with [Claude Code](https://claude.com/claude-code)
 
 ## License
