@@ -76,13 +76,22 @@ export class RateLimiter {
 
 export const defaultLimiter = new RateLimiter();
 
-/** Resolve the client IP from a Node request. Honors X-Forwarded-For only
- * if it looks sane — default proxy is localhost so usually just socket.address. */
+/** Resolve the client IP from a Node request.
+ *
+ * By default returns the socket remote address only. X-Forwarded-For is
+ * ONLY trusted when `TRUST_PROXY=1` (or any truthy value) is set in the
+ * environment — otherwise an attacker behind any Node-proxy instance
+ * could spoof their source IP to bypass per-IP rate limits.
+ *
+ * The live Cloudflare Worker doesn't use this path; it honors
+ * `cf-connecting-ip` which is set by CF's edge and cannot be spoofed. */
 export function clientIp(req) {
-  const xff = req.headers["x-forwarded-for"];
-  if (typeof xff === "string" && xff.length && xff.length < 200) {
-    const first = xff.split(",")[0].trim();
-    if (first) return first;
+  if (process.env.TRUST_PROXY) {
+    const xff = req.headers["x-forwarded-for"];
+    if (typeof xff === "string" && xff.length && xff.length < 200) {
+      const first = xff.split(",")[0].trim();
+      if (first) return first;
+    }
   }
   return req.socket?.remoteAddress || "unknown";
 }

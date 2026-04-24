@@ -13,3 +13,7 @@ node_modules/
 !.vscode/extensions.json
 dogfood/node_modules/
 dogfood/package-lock.json
+
+# Internal audit / review notes. Never committed — deploy.yml would expose
+# them at github.io/keylessai/memory/* since Pages serves the whole repo.
+memory/
