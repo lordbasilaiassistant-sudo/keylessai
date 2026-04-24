@@ -1,6 +1,6 @@
 # KeylessAI &mdash; Free OpenAI API Alternative (No API Key Required)
 
-> **A drop-in OpenAI-compatible endpoint with zero API keys, zero signup, zero cost, and zero user compute.** Swap one env var &mdash; `OPENAI_API_BASE=https://text.pollinations.ai` &mdash; and your existing OpenAI code, Aider, Cline, Continue.dev, LangChain, Codex, and anything else that speaks the OpenAI chat-completions protocol just works. Plus a hosted browser chat and an optional local proxy for model-name aliasing + auto-failover across keyless providers.
+> **A drop-in OpenAI-compatible endpoint with zero API keys, zero signup, zero cost, and zero user compute.** Point your OpenAI client at `https://keylessai.thryx.workers.dev/v1` &mdash; that's it. Your existing OpenAI code, Aider, Cline, Continue.dev, LangChain, Codex, and anything else that speaks the OpenAI chat-completions protocol just works. Model-name aliasing (`gpt-4o`, `claude-3-5-sonnet-latest`, etc.), adaptive multi-provider failover, prompt cache, circuit breaker, rate limiting &mdash; all handled at the edge.
 
 [![Deploy](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/deploy.yml/badge.svg)](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/deploy.yml)
 [![Tests](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/test.yml/badge.svg)](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/test.yml)
@@ -20,81 +20,58 @@ If you run autonomous coding agents, chatbots, or LangChain pipelines, your Open
 
 KeylessAI adds the layer on top of raw Pollinations that makes this usable in production: multi-provider aggregation (Pollinations + [ApiAirforce](https://api.airforce/) today, more as they appear), a client-side single-flight queue so parallel callers don't blow through the 1-concurrent-per-IP limit, and aggressive filtering of the deprecation notices and promo-URL ads that upstream providers occasionally inject into responses.
 
-## Three ways to use it
-
-Pick whichever fits your context — they share the same router, providers, cache, circuit breaker, and failover logic.
-
-### 1. As a library (zero install, runs in your process)
+## The one-liner
 
 ```bash
-npm install github:lordbasilaiassistant-sudo/keylessai
-```
-
-```js
-import { streamChat } from "keylessai";
-
-for await (const chunk of streamChat({
-  provider: "auto",
-  messages: [{ role: "user", content: "hello" }],
-})) {
-  if (chunk.type === "content") process.stdout.write(chunk.text);
-}
-```
-
-Used by [`keylessai-daily`](https://github.com/lordbasilaiassistant-sudo/keylessai-daily) right now — a GitHub Action appends a new LLM-generated entry to its README every day, entirely via this path.
-
-### 2. As a local OpenAI-compatible proxy (best for agent tooling)
-
-```bash
-npx github:lordbasilaiassistant-sudo/keylessai serve --local
-# → listening on http://127.0.0.1:8787
-```
-
-Then any OpenAI client works unchanged:
-
-```bash
-export OPENAI_API_BASE="http://127.0.0.1:8787/v1"
-export OPENAI_BASE_URL="http://127.0.0.1:8787/v1"
+export OPENAI_API_BASE="https://keylessai.thryx.workers.dev/v1"
+export OPENAI_BASE_URL="https://keylessai.thryx.workers.dev/v1"
 export OPENAI_API_KEY="not-needed"
+# now run your agent — no changes to your code
 ```
 
-### 3. As a public Cloudflare Worker (zero install for your users)
+That's the whole setup. Hits a Cloudflare Worker at the edge that wraps our router: 4 keyless upstream providers with adaptive failover, prompt cache, circuit breaker, per-IP rate limiting, model-name aliasing so `gpt-4o` / `claude-3-5-sonnet-latest` / etc. resolve automatically. Cloudflare's free tier covers 100k req/day; past that it degrades to 429s instead of billing anyone.
 
-Source is checked in at [`worker/`](worker/). Deploy your own copy:
+Try it right now:
 
 ```bash
-cd worker
-npx wrangler login        # one-time
-npx wrangler deploy
+curl https://keylessai.thryx.workers.dev/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}'
 ```
 
-Cloudflare's free tier covers 100k req/day and literally cannot bill you beyond that (429s instead). Your users then just set `OPENAI_API_BASE` to your Worker URL — no install on their side, no keys, no signup.
+### Other ways to use it
+
+Same router, same code, different packaging:
+
+- **Library import** (`npm install github:lordbasilaiassistant-sudo/keylessai`) — runs in your own Node process. Used by [`keylessai-daily`](https://github.com/lordbasilaiassistant-sudo/keylessai-daily) to auto-update its README every day via GitHub Actions.
+- **Local proxy** (`npx github:lordbasilaiassistant-sudo/keylessai serve --local`) — same OpenAI-compatible HTTP surface, running on `127.0.0.1:8787`. For air-gapped environments or when you prefer zero external dependencies.
+- **Self-hosted Worker** — fork the repo and `cd worker && npx wrangler deploy` to your own Cloudflare account. Source is in [`worker/`](worker/).
 
 ## Works with
 
-Once `npx keylessai serve` is running, every OpenAI-compatible tool works against `http://127.0.0.1:8787/v1` with no code changes:
+Once `npx keylessai serve` is running, every OpenAI-compatible tool works against `https://keylessai.thryx.workers.dev/v1` with no code changes:
 
 | Tool | Integration |
 |---|---|
-| [Aider](https://aider.chat/) | `OPENAI_API_BASE=http://127.0.0.1:8787/v1 OPENAI_API_KEY=not-needed aider --model gpt-4o` &nbsp;_(gpt-4o gets aliased)_ |
-| [Cline](https://github.com/cline/cline) / Roo Code | Settings &rarr; OpenAI provider, baseUrl = `http://127.0.0.1:8787/v1`, key = `not-needed` |
-| [Continue.dev](https://continue.dev/) | `~/.continue/config.json` &rarr; provider `"openai"`, `apiBase: "http://127.0.0.1:8787/v1"`, `apiKey: "not-needed"` |
-| [Codex CLI](https://github.com/openai/codex) | `export OPENAI_BASE_URL=http://127.0.0.1:8787/v1 OPENAI_API_KEY=not-needed && codex` |
+| [Aider](https://aider.chat/) | `OPENAI_API_BASE=https://keylessai.thryx.workers.dev/v1 OPENAI_API_KEY=not-needed aider --model gpt-4o` &nbsp;_(gpt-4o gets aliased)_ |
+| [Cline](https://github.com/cline/cline) / Roo Code | Settings &rarr; OpenAI provider, baseUrl = `https://keylessai.thryx.workers.dev/v1`, key = `not-needed` |
+| [Continue.dev](https://continue.dev/) | `~/.continue/config.json` &rarr; provider `"openai"`, `apiBase: "https://keylessai.thryx.workers.dev/v1"`, `apiKey: "not-needed"` |
+| [Codex CLI](https://github.com/openai/codex) | `export OPENAI_BASE_URL=https://keylessai.thryx.workers.dev/v1 OPENAI_API_KEY=not-needed && codex` |
 | [Claude Code](https://claude.com/claude-code) | via [LiteLLM bridge](examples/claude-code-bridge.md) &mdash; translate Anthropic format to OpenAI |
-| [LangChain](https://python.langchain.com/) | `ChatOpenAI(base_url="http://127.0.0.1:8787/v1", api_key="not-needed", model="openai-fast")` |
-| [OpenAI SDK (Python)](https://github.com/openai/openai-python) | `OpenAI(base_url="http://127.0.0.1:8787/v1", api_key="not-needed")` &mdash; pass any model name |
-| [OpenAI SDK (Node)](https://github.com/openai/openai-node) | `new OpenAI({ baseURL: "http://127.0.0.1:8787/v1", apiKey: "not-needed" })` |
-| [LlamaIndex](https://docs.llamaindex.ai/) | `OpenAI(api_base="http://127.0.0.1:8787/v1", api_key="not-needed")` |
-| [LiteLLM proxy](https://github.com/BerriAI/litellm) | `api_base: http://127.0.0.1:8787/v1, api_key: not-needed` |
-| [OpenHands](https://github.com/All-Hands-AI/OpenHands) | `LLM_BASE_URL=http://127.0.0.1:8787/v1 LLM_API_KEY=not-needed LLM_MODEL=openai/openai-fast` |
-| Anything OpenAI-compatible | Point `baseURL` at `http://127.0.0.1:8787/v1`, pass any key |
+| [LangChain](https://python.langchain.com/) | `ChatOpenAI(base_url="https://keylessai.thryx.workers.dev/v1", api_key="not-needed", model="openai-fast")` |
+| [OpenAI SDK (Python)](https://github.com/openai/openai-python) | `OpenAI(base_url="https://keylessai.thryx.workers.dev/v1", api_key="not-needed")` &mdash; pass any model name |
+| [OpenAI SDK (Node)](https://github.com/openai/openai-node) | `new OpenAI({ baseURL: "https://keylessai.thryx.workers.dev/v1", apiKey: "not-needed" })` |
+| [LlamaIndex](https://docs.llamaindex.ai/) | `OpenAI(api_base="https://keylessai.thryx.workers.dev/v1", api_key="not-needed")` |
+| [LiteLLM proxy](https://github.com/BerriAI/litellm) | `api_base: https://keylessai.thryx.workers.dev/v1, api_key: not-needed` |
+| [OpenHands](https://github.com/All-Hands-AI/OpenHands) | `LLM_BASE_URL=https://keylessai.thryx.workers.dev/v1 LLM_API_KEY=not-needed LLM_MODEL=openai/openai-fast` |
+| Anything OpenAI-compatible | Point `baseURL` at `https://keylessai.thryx.workers.dev/v1`, pass any key |
 
 ## Quick examples
 
 Start the proxy first:
 ```bash
 npx github:lordbasilaiassistant-sudo/keylessai serve
-# → listening on http://127.0.0.1:8787
+# → listening on https://keylessai.thryx.workers.dev
 ```
 
 **Python (streaming):**
@@ -102,7 +79,7 @@ npx github:lordbasilaiassistant-sudo/keylessai serve
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="http://127.0.0.1:8787/v1",
+    base_url="https://keylessai.thryx.workers.dev/v1",
     api_key="not-needed",
 )
 
@@ -116,7 +93,7 @@ for chunk in client.chat.completions.create(
 
 **curl (streaming):**
 ```bash
-curl -N http://127.0.0.1:8787/v1/chat/completions \
+curl -N https://keylessai.thryx.workers.dev/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer anything" \
   -d '{
@@ -131,7 +108,7 @@ curl -N http://127.0.0.1:8787/v1/chat/completions \
 from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(
-    base_url="http://127.0.0.1:8787/v1",
+    base_url="https://keylessai.thryx.workers.dev/v1",
     api_key="not-needed",
     model="gpt-4o",  # aliased
     streaming=True,
@@ -142,8 +119,8 @@ for chunk in llm.stream("Explain server-sent events in 2 sentences."):
 
 **Health check + model list:**
 ```bash
-curl http://127.0.0.1:8787/health
-curl http://127.0.0.1:8787/v1/models
+curl https://keylessai.thryx.workers.dev/health
+curl https://keylessai.thryx.workers.dev/v1/models
 ```
 
 ## What you get

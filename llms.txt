@@ -1,16 +1,14 @@
 # KeylessAI
 
-> Free LLM inference with zero API keys. A drop-in OpenAI-compatible replacement that works with Aider, Cline, Continue.dev, LangChain, and any existing OpenAI SDK. Aggregates public no-auth endpoints (Pollinations, ApiAirforce) with automatic failover, client-side queueing, and ad/notice filtering. No user compute required.
+> Free LLM inference with zero API keys. Public endpoint at https://keylessai.thryx.workers.dev/v1 — drop-in OpenAI-compatible. Works with Aider, Cline, Continue.dev, LangChain, and any existing OpenAI SDK. Aggregates 4 keyless upstream providers (Pollinations SSE, Pollinations GET, ApiAirforce, Yqcloud) with adaptive failover, prompt cache, circuit breaker, per-IP rate limiting, and ad/notice filtering — all at the edge.
 
-## Use as a drop-in OpenAI replacement — zero install path
-
-Point any OpenAI-compatible client directly at Pollinations. Nothing runs on your machine.
+## Use as a drop-in OpenAI replacement
 
 ```bash
-export OPENAI_API_BASE="https://text.pollinations.ai"
-export OPENAI_BASE_URL="https://text.pollinations.ai"
+export OPENAI_API_BASE="https://keylessai.thryx.workers.dev/v1"
+export OPENAI_BASE_URL="https://keylessai.thryx.workers.dev/v1"
 export OPENAI_API_KEY="not-needed"
-export OPENAI_MODEL="openai-fast"
+# OPENAI_MODEL can be openai-fast OR aliased names like gpt-4o, claude-3-5-sonnet-latest, etc.
 ```
 
 That's the whole setup. No signup, no daemon, no signup.
@@ -23,7 +21,7 @@ If your tool hardcodes model names like `gpt-4o` or `claude-3-5-sonnet-latest`, 
 npx github:lordbasilaiassistant-sudo/keylessai serve
 ```
 
-It listens on `http://127.0.0.1:8787/v1` and transparently aliases OpenAI/Anthropic model names to the current keyless-tier model, fails over across providers, and de-spams upstream responses.
+It listens on `https://keylessai.thryx.workers.dev/v1` and transparently aliases OpenAI/Anthropic model names to the current keyless-tier model, fails over across providers, and de-spams upstream responses.
 
 Works with:
 - Aider (`aider --model openai/openai-fast`)
