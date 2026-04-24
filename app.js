@@ -21,6 +21,48 @@ const state = {
   modelGroups: [],
 };
 
+const heroEl = document.getElementById("hero");
+const suggestionsEl = document.getElementById("suggestions");
+
+const SUGGESTIONS = [
+  { label: "Build", prompt: "Write a Python script that renames every file in a folder to lowercase." },
+  { label: "Explain", prompt: "Explain this regex: /^(?!.*\\s)[a-zA-Z0-9_-]{3,16}$/" },
+  { label: "Debug", prompt: "What are 5 likely reasons a fetch() call works locally but fails in production?" },
+  { label: "Refactor", prompt: "Rewrite this in TypeScript with proper types:\n\nfunction greet(name) { return 'hi ' + name }" },
+  { label: "SQL", prompt: "Given a users table with (id, email, created_at), write a query to get the 5 newest users per email domain." },
+  { label: "Shell", prompt: "One-line bash: find all .log files modified in the last 24h and compress them." },
+];
+
+function renderSuggestions() {
+  if (!suggestionsEl) return;
+  suggestionsEl.innerHTML = "";
+  for (const s of SUGGESTIONS) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "suggestion";
+    btn.innerHTML = `<small>${s.label}</small>${escapeHtml(s.prompt.split("\n")[0])}`;
+    btn.addEventListener("click", () => {
+      hideHero();
+      void send(s.prompt);
+    });
+    suggestionsEl.appendChild(btn);
+  }
+}
+
+function hideHero() {
+  if (heroEl && !heroEl.hidden) {
+    heroEl.hidden = true;
+  }
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem("keylessai:state") || "null");
@@ -84,6 +126,15 @@ async function populateModels() {
 function renderModelOptions() {
   const selectedProvider = providerSelect.value;
   modelSelect.innerHTML = "";
+
+  const autoOpt = document.createElement("option");
+  autoOpt.value = JSON.stringify({ provider: null, model: null, auto: true });
+  autoOpt.textContent =
+    selectedProvider === "auto"
+      ? "auto — best available everywhere"
+      : "auto — provider default";
+  modelSelect.appendChild(autoOpt);
+
   const groups =
     selectedProvider === "auto"
       ? state.modelGroups
@@ -132,6 +183,7 @@ newChatBtn.addEventListener("click", () => {
   state.conversation = [];
   messagesEl.innerHTML = "";
   setStatus("");
+  if (heroEl) heroEl.hidden = false;
   inputEl.focus();
 });
 
@@ -149,8 +201,16 @@ composerEl.addEventListener("submit", (e) => {
   const text = inputEl.value.trim();
   if (!text) return;
   inputEl.value = "";
+  autoResize();
+  hideHero();
   void send(text);
 });
+
+function autoResize() {
+  inputEl.style.height = "auto";
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 220) + "px";
+}
+inputEl.addEventListener("input", autoResize);
 
 inputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
@@ -264,10 +324,11 @@ function checkDonatedRedirect() {
 
 (async function init() {
   loadState();
+  renderSuggestions();
   checkDonatedRedirect();
   try {
     await populateModels();
-    setStatus("ready", "ok");
+    setStatus("ready · keyless", "ok");
   } catch (e) {
     setStatus(`init failed: ${e.message}`, "err");
   }

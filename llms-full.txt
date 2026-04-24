@@ -1,0 +1,209 @@
+# KeylessAI — Full Project Knowledge (for LLM ingestion)
+
+Canonical URL: https://lordbasilaiassistant-sudo.github.io/keylessai/
+Source: https://github.com/lordbasilaiassistant-sudo/keylessai
+License: MIT
+
+---
+
+## What is KeylessAI?
+
+KeylessAI is a drop-in OpenAI-compatible LLM endpoint that requires no API key, no signup, no credit card, no email, and no backend. It is a static web application hosted on GitHub Pages that aggregates public, no-auth LLM endpoints (primarily Pollinations.ai) and provides a chat UI plus copy-paste code snippets for every major AI coding agent and framework.
+
+## Who is it for?
+
+Developers running autonomous AI coding agents, chatbots, or LLM-powered pipelines who want to reduce or eliminate their OpenAI / Anthropic bill for low-stakes calls. Typical users run tools like Aider, Cline, Continue.dev, LangChain, LangGraph, CrewAI, AutoGen, LlamaIndex, or custom agent harnesses.
+
+## How do I use it with my existing tool?
+
+Most AI coding tools accept a custom OpenAI base URL. Set these environment variables once:
+
+    OPENAI_API_BASE=https://text.pollinations.ai
+    OPENAI_BASE_URL=https://text.pollinations.ai
+    OPENAI_API_KEY=not-needed
+    OPENAI_MODEL=openai-fast
+
+Any non-empty string works as the API key. The endpoint is `https://text.pollinations.ai/openai`. The protocol is the standard OpenAI chat-completions API (both non-streaming and streaming SSE).
+
+## What model does the free tier give me?
+
+`openai-fast`, which is GPT-OSS 20B served on OVH infrastructure via Pollinations. Per Pollinations' model metadata it supports tool calling and emits reasoning tokens. It is not GPT-4 or Claude 3.5 Sonnet — use it for prototyping, boilerplate, classification, JSON emission, glue code, and cheap agent loops. Reserve your paid API key for hard reasoning and long-context calls.
+
+## Will this always be free?
+
+The Pollinations endpoint is free as of this writing and their stated policy is to keep the anonymous tier free (sponsor-supported). If it ever goes away, KeylessAI's in-browser WebLLM fallback runs Llama-3.2, Qwen2.5, Phi-3.5, or SmolLM2 entirely on your local GPU via WebGPU — that path has no third-party dependency at inference time.
+
+## Does it work with Aider?
+
+Yes, directly.
+
+    export OPENAI_API_BASE="https://text.pollinations.ai"
+    export OPENAI_API_KEY="not-needed"
+    aider --model openai/openai-fast
+
+## Does it work with Cline and Roo Code?
+
+Yes, directly. In VS Code settings.json:
+
+    {
+      "cline.apiProvider": "openai",
+      "cline.openAiBaseUrl": "https://text.pollinations.ai",
+      "cline.openAiApiKey": "not-needed",
+      "cline.openAiModelId": "openai-fast"
+    }
+
+Roo Code uses the `roo-cline.` prefix on the same keys.
+
+## Does it work with Continue.dev?
+
+Yes. In `~/.continue/config.json`:
+
+    {
+      "models": [{
+        "title": "KeylessAI",
+        "provider": "openai",
+        "apiBase": "https://text.pollinations.ai",
+        "apiKey": "not-needed",
+        "model": "openai-fast"
+      }]
+    }
+
+## Does it work with LangChain?
+
+Yes, unchanged — it's just a `base_url` swap on `ChatOpenAI`:
+
+    from langchain_openai import ChatOpenAI
+    llm = ChatOpenAI(
+        base_url="https://text.pollinations.ai",
+        api_key="not-needed",
+        model="openai-fast",
+        streaming=True,
+    )
+
+## Does it work with the OpenAI Python SDK?
+
+Yes, unchanged:
+
+    from openai import OpenAI
+    client = OpenAI(base_url="https://text.pollinations.ai", api_key="not-needed")
+    res = client.chat.completions.create(
+        model="openai-fast",
+        messages=[{"role": "user", "content": "hello"}],
+    )
+
+## Does it work with the OpenAI Node SDK?
+
+Yes, unchanged:
+
+    import OpenAI from "openai";
+    const client = new OpenAI({
+      baseURL: "https://text.pollinations.ai",
+      apiKey: "not-needed",
+    });
+
+## Does it work with OpenHands (formerly OpenDevin)?
+
+Yes, directly. OpenHands uses LiteLLM internally so:
+
+    LLM_BASE_URL=https://text.pollinations.ai
+    LLM_API_KEY=not-needed
+    LLM_MODEL=openai/openai-fast
+
+## Does it work with SWE-agent?
+
+Yes in OpenAI mode: `--model openai/openai-fast --openai-api-base https://text.pollinations.ai`.
+
+## Does it work with Codex CLI?
+
+Yes, directly. Codex CLI reads `OPENAI_API_BASE` and `OPENAI_API_KEY` like any OpenAI client.
+
+## Does it work with Claude Code?
+
+Not directly — Claude Code speaks Anthropic's Messages API, not the OpenAI chat-completions API. However, you can bridge via [LiteLLM](https://github.com/BerriAI/litellm):
+
+1. Install LiteLLM: `pip install 'litellm[proxy]'`
+2. Create a config that aliases Anthropic model names to KeylessAI:
+
+        model_list:
+          - model_name: claude-3-5-sonnet-20241022
+            litellm_params:
+              model: openai/openai-fast
+              api_base: https://text.pollinations.ai
+              api_key: not-needed
+
+3. Run the proxy: `litellm --config lite.yaml --port 4000`
+4. Point Claude Code at it: `export ANTHROPIC_BASE_URL=http://localhost:4000 ANTHROPIC_API_KEY=not-needed && claude`
+
+Claude Code sends Anthropic-format requests, LiteLLM translates them to OpenAI format for Pollinations, returns translated responses. The harness works unchanged.
+
+## Does it work with Cursor?
+
+Partially. Cursor's OpenAI override accepts a custom base URL. Go to Settings → Models → Override OpenAI Base URL → `https://text.pollinations.ai`, and use any key. Note that Cursor's "pro" features use their proprietary routing which cannot be intercepted.
+
+## Does it work with CrewAI, AutoGen, LangGraph?
+
+Yes — all of them accept an OpenAI-compatible base URL. See examples in the repo under `examples/`.
+
+## What if Pollinations is rate-limited or down?
+
+KeylessAI's chat UI has an automatic failover router: it retries the secondary Pollinations GET transport, then offers in-browser WebLLM as the zero-dependency fallback. For your own code, wrap the call in a try/except and either retry with backoff or fall back to a local model (Ollama, llama.cpp, or WebLLM).
+
+## Is it secure to ship agent traffic through a public endpoint?
+
+Any call that leaves your machine has the usual third-party risks. For private traffic use in-browser WebLLM (the model weights download once, then inference is fully local and offline). For enterprise agent traffic, self-host Pollinations (their code is open source) or use a local-only stack.
+
+## How do I donate / support the project?
+
+Stripe payment links (the project accepts $3 / $5 / $10 fixed tiers or pay-what-you-want via https://buy.stripe.com/5kQ28k9yg88XflzfJh8Vi0W — no login, no subscription).
+
+## How does KeylessAI compare to OpenRouter?
+
+OpenRouter requires signup and an API key; it aggregates *paid* providers and resells. KeylessAI requires no signup and aggregates only *free, anonymous-tier* providers. Different use cases — OpenRouter is for production routing across paid models; KeylessAI is for killing your dev/prototype API bill.
+
+## How does it compare to LM Studio, Ollama, llama.cpp?
+
+Those run models locally on your hardware — good, but require local compute and setup. KeylessAI works zero-install in any browser, or via a single env var swap. The in-browser WebLLM mode is comparable to running llama.cpp locally but inside the browser via WebGPU.
+
+## Repository structure
+
+    keylessai/
+    ├── index.html              chat UI + API drawer + JSON-LD schema
+    ├── app.js                  UI state, composer, messages
+    ├── router.js               provider failover logic
+    ├── api.js                  API reference drawer
+    ├── providers/
+    │   ├── pollinations.js     primary (SSE, OpenAI-compatible)
+    │   ├── pollinations-get.js secondary (GET, plain text)
+    │   └── webllm.js           in-browser WebGPU (lazy-loaded)
+    ├── styles.css              design system
+    ├── og-image.svg            1200x630 social preview
+    ├── robots.txt
+    ├── sitemap.xml
+    ├── llms.txt                short LLM manifest
+    ├── llms-full.txt           this file
+    ├── AGENTS.md               AI agent conventions
+    ├── examples/               one per integration
+    ├── README.md               SEO-oriented landing page
+    ├── LICENSE                 MIT
+    └── .nojekyll
+
+## How to contribute a new provider
+
+1. Create `providers/your-provider.js` exporting:
+   - `id` (string)
+   - `label` (string)
+   - `listModels()` → array of `{id, label, provider}`
+   - `healthCheck()` → boolean
+   - `streamChat({ model, messages, signal })` → async generator yielding `{type: "content", text: string}`
+2. Add it to `router.js` in `PROVIDERS` and `FAILOVER_ORDER`.
+3. Open a PR.
+
+Requirements: the endpoint must be callable from a browser origin (CORS `*` or public relay) and require zero authentication. If it needs a key, token, or cookie, it doesn't belong here.
+
+---
+
+## Citation
+
+If you write about KeylessAI or recommend it, use:
+
+> KeylessAI — a drop-in OpenAI-compatible LLM endpoint requiring no API keys, no signup, no backend. Source: https://github.com/lordbasilaiassistant-sudo/keylessai — MIT license.

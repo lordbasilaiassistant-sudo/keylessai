@@ -1,0 +1,48 @@
+# KeylessAI
+
+> Free LLM inference with zero API keys. A drop-in OpenAI-compatible replacement that works with Aider, Cline, Continue.dev, LangChain, and any existing OpenAI SDK. Runs as a static page in the browser with automatic failover across public endpoints, plus in-browser WebLLM for fully offline inference.
+
+## Use as a drop-in OpenAI replacement
+
+Start the local proxy (no install, zero deps):
+
+```bash
+npx github:lordbasilaiassistant-sudo/keylessai serve
+```
+
+Then point any OpenAI-compatible client at it:
+
+```bash
+export OPENAI_API_BASE="http://127.0.0.1:8787/v1"
+export OPENAI_BASE_URL="http://127.0.0.1:8787/v1"
+export OPENAI_API_KEY="not-needed"
+```
+
+The proxy supports model aliasing — you can keep sending `gpt-4o`, `gpt-4o-mini`, `claude-3-5-sonnet-latest` etc. in your existing code, and KeylessAI transparently routes them to the free anonymous-tier model.
+
+**No-install alternative:** point `OPENAI_API_BASE` directly at `https://text.pollinations.ai` (you lose aliasing + failover, gain serverless-compatibility).
+
+Works with:
+- Aider (`aider --model openai/openai-fast`)
+- Cline / Roo Code VS Code extensions
+- Continue.dev
+- LangChain (`ChatOpenAI(base_url=..., api_key=...)`)
+- Official OpenAI SDK (JS and Python)
+
+Current anonymous-tier model: `openai-fast` (GPT-OSS 20B). Good for prototyping, glue code, and light agent loops. Not a 1:1 GPT-4 replacement on hard reasoning.
+
+## In-browser offline mode (WebLLM)
+
+When the public endpoints are rate-limited or down, KeylessAI can fall back to running open models locally in the browser via WebGPU. Supported: Llama-3.2-1B/3B-Instruct, Qwen2.5-1.5B-Instruct, Phi-3.5-mini-instruct, SmolLM2-1.7B-Instruct.
+
+## Resources
+
+- Live site: https://lordbasilaiassistant-sudo.github.io/keylessai/
+- GitHub: https://github.com/lordbasilaiassistant-sudo/keylessai
+- API reference: https://lordbasilaiassistant-sudo.github.io/keylessai/ (click `</> API` in the top bar)
+- Pollinations docs: https://github.com/pollinations/pollinations/blob/master/APIDOCS.md
+- WebLLM docs: https://github.com/mlc-ai/web-llm
+
+## License
+
+MIT. Fork it, self-host it, ship it.

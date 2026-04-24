@@ -1,0 +1,15 @@
+{
+  "_comment": "Add these keys to your VS Code settings.json to point Cline at KeylessAI.",
+  "_how_to_use": "Open VS Code > Cmd/Ctrl+Shift+P > 'Preferences: Open User Settings (JSON)' > paste these keys into the top-level object. Restart Cline.",
+
+  "cline.apiProvider": "openai",
+  "cline.openAiBaseUrl": "https://text.pollinations.ai",
+  "cline.openAiApiKey": "not-needed",
+  "cline.openAiModelId": "openai-fast",
+
+  "_roo_code_equivalent": "Roo Code uses 'roo-cline.' prefix instead of 'cline.' — same keys otherwise.",
+  "roo-cline.apiProvider": "openai",
+  "roo-cline.openAiBaseUrl": "https://text.pollinations.ai",
+  "roo-cline.openAiApiKey": "not-needed",
+  "roo-cline.openAiModelId": "openai-fast"
+}
