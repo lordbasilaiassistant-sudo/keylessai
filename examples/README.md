@@ -18,8 +18,8 @@ Copy-paste integrations for every tool KeylessAI works with. No keys required.
 ## The core config (works for 90% of tools)
 
 ```bash
-export OPENAI_API_BASE="https://text.pollinations.ai"
-export OPENAI_BASE_URL="https://text.pollinations.ai"
+export OPENAI_API_BASE="https://keylessai.thryx.workers.dev/v1"
+export OPENAI_BASE_URL="https://keylessai.thryx.workers.dev/v1"
 export OPENAI_API_KEY="not-needed"
 export OPENAI_MODEL="openai-fast"
 ```

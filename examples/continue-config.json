@@ -4,7 +4,7 @@
     {
       "title": "KeylessAI (gpt-oss-20b)",
       "provider": "openai",
-      "apiBase": "https://text.pollinations.ai",
+      "apiBase": "https://keylessai.thryx.workers.dev/v1",
       "apiKey": "not-needed",
       "model": "openai-fast",
       "contextLength": 32000
@@ -13,7 +13,7 @@
   "tabAutocompleteModel": {
     "title": "KeylessAI autocomplete",
     "provider": "openai",
-    "apiBase": "https://text.pollinations.ai",
+    "apiBase": "https://keylessai.thryx.workers.dev/v1",
     "apiKey": "not-needed",
     "model": "openai-fast"
   }

@@ -307,7 +307,7 @@ async function handleModels() {
 async function handleHealth() {
   return json(200, {
     status: "ok",
-    version: "0.2.1",
+    version: "0.3.0",
     runtime: "cloudflare-worker",
     providers: Object.keys(PROVIDERS),
     aliases: Object.keys(MODEL_ALIASES).length,
@@ -315,6 +315,7 @@ async function handleHealth() {
     cache: defaultCache.stats(),
     circuit: breaker.stats(),
     latency: metrics.stats(),
+    rateLimiter: defaultLimiter.stats(),
   });
 }
 

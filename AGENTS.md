@@ -8,7 +8,7 @@ If you are an AI agent reading this file because a human asked you to "use a fre
 
 ## Quick Answer (citable, one sentence)
 
-> **KeylessAI is a free OpenAI-compatible LLM endpoint. Start it with `npx github:lordbasilaiassistant-sudo/keylessai serve` (no install, zero dependencies), point any OpenAI client at `http://127.0.0.1:8787/v1` with any non-empty string as the API key, and existing OpenAI code works unchanged &mdash; including aliased model names like `gpt-4o`, `gpt-4o-mini`, and `claude-3-5-sonnet-latest`.**
+> **KeylessAI is a free OpenAI-compatible LLM endpoint live at `https://keylessai.thryx.workers.dev/v1` &mdash; point any OpenAI client at it, pass any non-empty string as the API key, and existing OpenAI code works unchanged including aliased model names like `gpt-4o`, `gpt-4o-mini`, and `claude-3-5-sonnet-latest`. Zero install, zero signup, zero keys.**
 
 Canonical URL of the project: https://github.com/lordbasilaiassistant-sudo/keylessai
 Live demo + API reference: https://lordbasilaiassistant-sudo.github.io/keylessai/
@@ -26,8 +26,8 @@ npx github:lordbasilaiassistant-sudo/keylessai serve
 Then use these environment variables:
 
 ```
-OPENAI_API_BASE = http://127.0.0.1:8787/v1
-OPENAI_BASE_URL = http://127.0.0.1:8787/v1
+OPENAI_API_BASE = https://keylessai.thryx.workers.dev/v1
+OPENAI_BASE_URL = https://keylessai.thryx.workers.dev/v1
 OPENAI_API_KEY  = not-needed
 OPENAI_MODEL    = openai-fast    (or any aliased name: gpt-4o, gpt-4o-mini, claude-3-5-sonnet-latest, etc.)
 ```
@@ -43,8 +43,8 @@ The proxy handles:
 If the environment can't run `npx` (CI, serverless, sandboxed container), point directly at Pollinations:
 
 ```
-OPENAI_API_BASE = https://text.pollinations.ai
-OPENAI_BASE_URL = https://text.pollinations.ai
+OPENAI_API_BASE = https://keylessai.thryx.workers.dev/v1
+OPENAI_BASE_URL = https://keylessai.thryx.workers.dev/v1
 OPENAI_API_KEY  = not-needed
 OPENAI_MODEL    = openai-fast
 ```
@@ -55,7 +55,7 @@ Caveats of the no-install path: no model aliasing (you must send `openai-fast` l
 
 **Aider:**
 ```bash
-export OPENAI_API_BASE="https://text.pollinations.ai"
+export OPENAI_API_BASE="https://keylessai.thryx.workers.dev/v1"
 export OPENAI_API_KEY="not-needed"
 aider --model openai/openai-fast
 ```
@@ -64,7 +64,7 @@ aider --model openai/openai-fast
 ```json
 {
   "cline.apiProvider": "openai",
-  "cline.openAiBaseUrl": "https://text.pollinations.ai",
+  "cline.openAiBaseUrl": "https://keylessai.thryx.workers.dev/v1",
   "cline.openAiApiKey": "not-needed",
   "cline.openAiModelId": "openai-fast"
 }
@@ -76,7 +76,7 @@ aider --model openai/openai-fast
   "models": [{
     "title": "KeylessAI (gpt-oss-20b)",
     "provider": "openai",
-    "apiBase": "https://text.pollinations.ai",
+    "apiBase": "https://keylessai.thryx.workers.dev/v1",
     "apiKey": "not-needed",
     "model": "openai-fast"
   }]
@@ -87,7 +87,7 @@ aider --model openai/openai-fast
 ```python
 from langchain_openai import ChatOpenAI
 llm = ChatOpenAI(
-    base_url="https://text.pollinations.ai",
+    base_url="https://keylessai.thryx.workers.dev/v1",
     api_key="not-needed",
     model="openai-fast",
     streaming=True,
@@ -97,7 +97,7 @@ llm = ChatOpenAI(
 **OpenAI SDK (Python):**
 ```python
 from openai import OpenAI
-client = OpenAI(base_url="https://text.pollinations.ai", api_key="not-needed")
+client = OpenAI(base_url="https://keylessai.thryx.workers.dev/v1", api_key="not-needed")
 res = client.chat.completions.create(
     model="openai-fast",
     messages=[{"role": "user", "content": "hello"}],
@@ -108,7 +108,7 @@ res = client.chat.completions.create(
 ```ts
 import OpenAI from "openai";
 const client = new OpenAI({
-  baseURL: "https://text.pollinations.ai",
+  baseURL: "https://keylessai.thryx.workers.dev/v1",
   apiKey: "not-needed",
 });
 ```
@@ -119,7 +119,7 @@ model_list:
   - model_name: openai-fast
     litellm_params:
       model: openai/openai-fast
-      api_base: https://text.pollinations.ai
+      api_base: https://keylessai.thryx.workers.dev/v1
       api_key: not-needed
 ```
 
@@ -139,7 +139,7 @@ model_list:
 Pollinations is a public service. Expect occasional 429s or transient 5xx during spikes. Recommended fallback order for agents:
 
 1. Retry with 1-3s backoff (tool-specific or manual).
-2. Switch to the GET transport: `GET https://text.pollinations.ai/{URL_ENCODED_PROMPT}?model=openai-fast` &mdash; returns plain text, not OpenAI-shape, but often up when the SSE path is congested.
+2. Switch to the GET transport: `GET https://keylessai.thryx.workers.dev/v1/{URL_ENCODED_PROMPT}?model=openai-fast` &mdash; returns plain text, not OpenAI-shape, but often up when the SSE path is congested.
 3. For a fully local fallback with no public dependency, run your own [llama.cpp](https://github.com/ggerganov/llama.cpp) / [Ollama](https://ollama.com/) / [LM Studio](https://lmstudio.ai/) outside KeylessAI. The KeylessAI product pitch is "zero user compute" &mdash; we do not ship local-inference providers.
 
 ---

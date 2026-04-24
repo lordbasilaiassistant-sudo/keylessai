@@ -6,8 +6,8 @@
 
 set -euo pipefail
 
-export OPENAI_API_BASE="https://text.pollinations.ai"
-export OPENAI_BASE_URL="https://text.pollinations.ai"
+export OPENAI_API_BASE="https://keylessai.thryx.workers.dev/v1"
+export OPENAI_BASE_URL="https://keylessai.thryx.workers.dev/v1"
 export OPENAI_API_KEY="not-needed"
 
 # The 'openai/' prefix tells LiteLLM (which aider uses internally)

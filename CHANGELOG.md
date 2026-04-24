@@ -4,6 +4,30 @@ Notable changes. This project follows [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-04-24
+
+Public Worker is LIVE. No more localhost-first. Swap one env var and ship.
+
+### Added
+- **Public Cloudflare Worker** — live at `https://keylessai.thryx.workers.dev/v1`. Zero install, zero signup, zero keys. The whole proxy (router, cache, queue, circuit breaker, rate limiter, validator, metrics) now runs at the edge on Cloudflare's free tier (100k req/day).
+- **Fourth keyless provider: Yqcloud** (`providers/yqcloud.js`) via `api.binjie.fun`. Plain-text streaming, open CORS, works out of the box in the Worker environment. Four real providers now rotate under the router.
+- **Adaptive failover ranking** (`src/core/metrics.js` → `score(id)` + `rank(ids)`). Router's `auto` mode now re-orders providers by live success rate × latency penalty every request instead of a fixed order. Best-performing upstream always leads.
+- **Input validation hardening** (`src/core/validate.js`) — prototype-pollution block (`__proto__`, `constructor`, `prototype`), 1 MiB body cap, message-count cap, role whitelist, tool-call schema check. All rejections emit a clean 400 with an `invalid_request_error` type.
+- **Error message sanitization** — internal error strings are scrubbed before reaching clients (no filesystem paths, no stack frames, no provider internals). Request-id correlation on every error.
+- **`rateLimiter` stats on `/health`** — live per-IP bucket state exposed alongside cache, circuit, queue, and latency stats.
+- **`worker/` deployment surface** (`worker/index.js`, `worker/wrangler.toml`) — Cloudflare Workers entry using the same shared `src/core/*` runtime as the Node proxy. One codebase, two runtimes.
+- **OpenSSF Scorecard + Dependabot + gitleaks + CodeQL** workflows wired into `.github/workflows/`. Public security posture.
+
+### Changed
+- **README, AGENTS.md, llms.txt, llms-full.txt, index.html meta, drawer-endpoints.js, examples/*** now all lead with `https://keylessai.thryx.workers.dev/v1`. The `npx keylessai serve --local` flow is preserved as an opt-in alternative for air-gapped / firewalled environments.
+- **Landing-page structured data** (JSON-LD `SoftwareApplication`) updated to reference the public Worker endpoint as the primary surface.
+- **Model aliasing catalog** now counts 13 aliased names (`gpt-4o`, `gpt-4o-mini`, `claude-3-5-sonnet-latest`, etc.) all routing to `openai-fast`. Published in `/v1/models` response.
+
+### Fixed
+- `llms-full.txt` carried a `/v1/openai` path that leaked through from the pre-Worker Pollinations direct path — corrected to standard `/v1/chat/completions`.
+- `examples/curl-streaming.sh` was hitting the upstream `/openai` path; now uses the Worker's `/v1/chat/completions`.
+- Every `examples/` file (aider, cline, continue, langchain, openai-sdk-node, openai-sdk-python, litellm-config, claude-code-bridge) has been migrated from direct-upstream URLs to the Worker.
+
 ## [0.2.1] — 2026-04-24
 
 Reliability + dogfood pass. No breaking changes. Upgrade is safe for anyone on 0.2.0.

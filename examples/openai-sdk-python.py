@@ -6,7 +6,7 @@ pip install openai
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://text.pollinations.ai",
+    base_url="https://keylessai.thryx.workers.dev/v1",
     api_key="not-needed",
 )
 

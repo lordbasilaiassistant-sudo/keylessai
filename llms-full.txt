@@ -18,12 +18,12 @@ Developers running autonomous AI coding agents, chatbots, or LLM-powered pipelin
 
 Most AI coding tools accept a custom OpenAI base URL. Set these environment variables once:
 
-    OPENAI_API_BASE=https://text.pollinations.ai
-    OPENAI_BASE_URL=https://text.pollinations.ai
+    OPENAI_API_BASE=https://keylessai.thryx.workers.dev/v1
+    OPENAI_BASE_URL=https://keylessai.thryx.workers.dev/v1
     OPENAI_API_KEY=not-needed
     OPENAI_MODEL=openai-fast
 
-Any non-empty string works as the API key. The endpoint is `https://text.pollinations.ai/openai`. The protocol is the standard OpenAI chat-completions API (both non-streaming and streaming SSE).
+Any non-empty string works as the API key. The endpoint is `https://keylessai.thryx.workers.dev/v1/chat/completions`. The protocol is the standard OpenAI chat-completions API (both non-streaming and streaming SSE).
 
 ## What model does the free tier give me?
 
@@ -37,7 +37,7 @@ The Pollinations endpoint is free as of this writing and their stated policy is 
 
 Yes, directly.
 
-    export OPENAI_API_BASE="https://text.pollinations.ai"
+    export OPENAI_API_BASE="https://keylessai.thryx.workers.dev/v1"
     export OPENAI_API_KEY="not-needed"
     aider --model openai/openai-fast
 
@@ -47,7 +47,7 @@ Yes, directly. In VS Code settings.json:
 
     {
       "cline.apiProvider": "openai",
-      "cline.openAiBaseUrl": "https://text.pollinations.ai",
+      "cline.openAiBaseUrl": "https://keylessai.thryx.workers.dev/v1",
       "cline.openAiApiKey": "not-needed",
       "cline.openAiModelId": "openai-fast"
     }
@@ -62,7 +62,7 @@ Yes. In `~/.continue/config.json`:
       "models": [{
         "title": "KeylessAI",
         "provider": "openai",
-        "apiBase": "https://text.pollinations.ai",
+        "apiBase": "https://keylessai.thryx.workers.dev/v1",
         "apiKey": "not-needed",
         "model": "openai-fast"
       }]
@@ -74,7 +74,7 @@ Yes, unchanged — it's just a `base_url` swap on `ChatOpenAI`:
 
     from langchain_openai import ChatOpenAI
     llm = ChatOpenAI(
-        base_url="https://text.pollinations.ai",
+        base_url="https://keylessai.thryx.workers.dev/v1",
         api_key="not-needed",
         model="openai-fast",
         streaming=True,
@@ -85,7 +85,7 @@ Yes, unchanged — it's just a `base_url` swap on `ChatOpenAI`:
 Yes, unchanged:
 
     from openai import OpenAI
-    client = OpenAI(base_url="https://text.pollinations.ai", api_key="not-needed")
+    client = OpenAI(base_url="https://keylessai.thryx.workers.dev/v1", api_key="not-needed")
     res = client.chat.completions.create(
         model="openai-fast",
         messages=[{"role": "user", "content": "hello"}],
@@ -97,7 +97,7 @@ Yes, unchanged:
 
     import OpenAI from "openai";
     const client = new OpenAI({
-      baseURL: "https://text.pollinations.ai",
+      baseURL: "https://keylessai.thryx.workers.dev/v1",
       apiKey: "not-needed",
     });
 
@@ -105,13 +105,13 @@ Yes, unchanged:
 
 Yes, directly. OpenHands uses LiteLLM internally so:
 
-    LLM_BASE_URL=https://text.pollinations.ai
+    LLM_BASE_URL=https://keylessai.thryx.workers.dev/v1
     LLM_API_KEY=not-needed
     LLM_MODEL=openai/openai-fast
 
 ## Does it work with SWE-agent?
 
-Yes in OpenAI mode: `--model openai/openai-fast --openai-api-base https://text.pollinations.ai`.
+Yes in OpenAI mode: `--model openai/openai-fast --openai-api-base https://keylessai.thryx.workers.dev/v1`.
 
 ## Does it work with Codex CLI?
 
@@ -128,7 +128,7 @@ Not directly — Claude Code speaks Anthropic's Messages API, not the OpenAI cha
           - model_name: claude-3-5-sonnet-20241022
             litellm_params:
               model: openai/openai-fast
-              api_base: https://text.pollinations.ai
+              api_base: https://keylessai.thryx.workers.dev/v1
               api_key: not-needed
 
 3. Run the proxy: `litellm --config lite.yaml --port 4000`
@@ -138,7 +138,7 @@ Claude Code sends Anthropic-format requests, LiteLLM translates them to OpenAI f
 
 ## Does it work with Cursor?
 
-Partially. Cursor's OpenAI override accepts a custom base URL. Go to Settings → Models → Override OpenAI Base URL → `https://text.pollinations.ai`, and use any key. Note that Cursor's "pro" features use their proprietary routing which cannot be intercepted.
+Partially. Cursor's OpenAI override accepts a custom base URL. Go to Settings → Models → Override OpenAI Base URL → `https://keylessai.thryx.workers.dev/v1`, and use any key. Note that Cursor's "pro" features use their proprietary routing which cannot be intercepted.
 
 ## Does it work with CrewAI, AutoGen, LangGraph?
 
