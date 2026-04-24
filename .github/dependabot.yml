@@ -1,0 +1,34 @@
+version: 2
+updates:
+  # We ship zero runtime deps, but dogfood uses `openai` and CI uses
+  # actions/checkout etc. Keep those up-to-date.
+
+  - package-ecosystem: "npm"
+    directory: "/dogfood"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "dogfood"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "ci"
+
+  - package-ecosystem: "pip"
+    directory: "/dogfood"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "dogfood"

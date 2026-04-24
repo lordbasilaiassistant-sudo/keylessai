@@ -47,6 +47,14 @@ function sendError(res, status, message, type = "keylessai_error") {
 }
 
 const MAX_BODY_BYTES = 1_048_576; // 1 MiB — prevents OOM from hostile/huge POSTs
+const MAX_LOG_FIELD = 200;
+
+/** Strip control chars + cap length for anything user-controlled we log. */
+function safeLog(s) {
+  return String(s || "")
+    .replace(/[\x00-\x1F\x7F]/g, "·")
+    .slice(0, MAX_LOG_FIELD);
+}
 
 async function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -446,7 +454,7 @@ export function createProxy({ log = console.log } = {}) {
       }
       sendError(res, 404, `not found: ${req.method} ${path}`, "not_found");
     } catch (e) {
-      log(`error handling ${req.method} ${req.url}: ${e.message}`);
+      log(`error handling ${safeLog(req.method)} ${safeLog(req.url)}: ${safeLog(e.message)}`);
       if (!res.headersSent) {
         sendError(res, 500, e.message || "internal error");
       } else if (!res.writableEnded) {
