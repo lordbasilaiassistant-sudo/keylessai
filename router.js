@@ -1,21 +1,29 @@
 import * as pollinations from "./providers/pollinations.js";
 import * as pollinationsGet from "./providers/pollinations-get.js";
-import * as webllm from "./providers/webllm.js";
 
 export const PROVIDERS = {
   [pollinations.id]: pollinations,
   [pollinationsGet.id]: pollinationsGet,
-  [webllm.id]: webllm,
 };
 
-export const FAILOVER_ORDER = [
-  pollinations.id,
-  pollinationsGet.id,
+export const FAILOVER_ORDER = [pollinations.id, pollinationsGet.id];
+
+const NOTICE_PATTERNS = [
+  /important notice/i,
+  /legacy .{0,40}api is being deprecated/i,
+  /please migrate to/i,
+  /enter\.pollinations\.ai/i,
 ];
+
+function looksLikeNotice(text) {
+  if (!text || text.length < 30) return false;
+  const head = text.slice(0, 400);
+  return NOTICE_PATTERNS.filter((re) => re.test(head)).length >= 2;
+}
 
 export async function listAllModels() {
   const groups = [];
-  for (const key of [pollinations.id, pollinationsGet.id, webllm.id]) {
+  for (const key of FAILOVER_ORDER) {
     const p = PROVIDERS[key];
     try {
       const models = await p.listModels();
@@ -27,6 +35,62 @@ export async function listAllModels() {
   return groups;
 }
 
+async function* tryOne({ providerId, model, messages, signal, onStatus }) {
+  const p = PROVIDERS[providerId];
+  if (!p) throw new Error(`unknown provider: ${providerId}`);
+
+  const MAX_RETRIES = 3;
+  let attempt = 0;
+  let lastErr;
+
+  while (attempt < MAX_RETRIES) {
+    attempt++;
+    let chunks = [];
+    let noticed = false;
+    let erroredInStream;
+
+    try {
+      for await (const chunk of p.streamChat({ model, messages, signal, onStatus })) {
+        if (chunk.type !== "content") {
+          yield chunk;
+          continue;
+        }
+        chunks.push(chunk.text);
+
+        if (!noticed && chunks.length <= 6) {
+          const sofar = chunks.join("");
+          if (looksLikeNotice(sofar)) {
+            noticed = true;
+            if (onStatus) onStatus(`provider injected a notice, retrying…`);
+            break;
+          }
+        }
+
+        if (!noticed) yield chunk;
+      }
+    } catch (e) {
+      erroredInStream = e;
+    }
+
+    if (!noticed && !erroredInStream) return;
+
+    if (erroredInStream) {
+      const msg = String(erroredInStream.message || erroredInStream);
+      const retryable =
+        /429|queue full|timeout|502|503|504|network|fetch failed|aborted/i.test(msg);
+      lastErr = erroredInStream;
+      if (!retryable) throw erroredInStream;
+    }
+
+    if (signal?.aborted) throw new Error("aborted");
+    const backoff = 400 * attempt + Math.random() * 300;
+    if (onStatus) onStatus(`retrying in ${Math.round(backoff)}ms…`);
+    await new Promise((r) => setTimeout(r, backoff));
+  }
+
+  throw lastErr || new Error(`${providerId} gave only notices/errors after ${MAX_RETRIES} tries`);
+}
+
 export async function* streamChat({
   provider,
   model,
@@ -36,10 +100,8 @@ export async function* streamChat({
   onProviderChange,
 }) {
   if (provider && provider !== "auto") {
-    const p = PROVIDERS[provider];
-    if (!p) throw new Error(`unknown provider: ${provider}`);
     if (onProviderChange) onProviderChange(provider);
-    yield* p.streamChat({ model, messages, signal, onStatus });
+    yield* tryOne({ providerId: provider, model, messages, signal, onStatus });
     return;
   }
 
@@ -54,13 +116,10 @@ export async function* streamChat({
       }
       if (onProviderChange) onProviderChange(id);
       if (onStatus) onStatus(`via ${p.label}…`);
-      const pickedModel =
-        id === provider || id === "pollinations" || id === "pollinations-get"
-          ? model
-          : undefined;
       let emitted = false;
-      for await (const chunk of p.streamChat({
-        model: pickedModel,
+      for await (const chunk of tryOne({
+        providerId: id,
+        model: id === provider ? model : model,
         messages,
         signal,
         onStatus,
