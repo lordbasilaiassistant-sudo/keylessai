@@ -469,6 +469,18 @@ main.chat {
   flex-wrap: wrap;
 }
 
+.msg-actions-hover {
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+.msg:hover .msg-actions-hover,
+.msg-actions-hover:focus-within { opacity: 1; }
+
+.msg-action.copied {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .msg-action {
   background: var(--panel-raised);
   border: 1px solid var(--border);
