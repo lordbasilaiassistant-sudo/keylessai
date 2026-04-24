@@ -2,7 +2,8 @@
 
 > **A drop-in OpenAI-compatible endpoint with zero API keys, zero signup, zero cost, and zero user compute.** Swap one env var &mdash; `OPENAI_API_BASE=https://text.pollinations.ai` &mdash; and your existing OpenAI code, Aider, Cline, Continue.dev, LangChain, Codex, and anything else that speaks the OpenAI chat-completions protocol just works. Plus a hosted browser chat and an optional local proxy for model-name aliasing + auto-failover across keyless providers.
 
-[![Deploy to GitHub Pages](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/deploy.yml/badge.svg)](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/deploy.yml)
+[![Deploy](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/deploy.yml/badge.svg)](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/deploy.yml)
+[![Tests](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/test.yml/badge.svg)](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/test.yml)
 [![Live](https://img.shields.io/badge/live-keylessai-a8ffda?style=flat-square&logo=github)](https://lordbasilaiassistant-sudo.github.io/keylessai/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-7ab8ff?style=flat-square)](LICENSE)
 [![No API Keys](https://img.shields.io/badge/api%20keys-0-a8ffda?style=flat-square)](#)
