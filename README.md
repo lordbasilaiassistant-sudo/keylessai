@@ -2,6 +2,7 @@
 
 > **A drop-in OpenAI-compatible endpoint with zero API keys, zero signup, zero cost, and zero centralized backend.** Run one command &mdash; `npx github:lordbasilaiassistant-sudo/keylessai serve` &mdash; and you have a local OpenAI-compatible proxy that works with Aider, Cline, Continue.dev, LangChain, the official OpenAI SDK, Codex, and anything else that speaks the OpenAI chat-completions protocol. Plus a browser chat and in-browser WebLLM for fully offline inference.
 
+[![Deploy to GitHub Pages](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/deploy.yml/badge.svg)](https://github.com/lordbasilaiassistant-sudo/keylessai/actions/workflows/deploy.yml)
 [![Live](https://img.shields.io/badge/live-keylessai-a8ffda?style=flat-square&logo=github)](https://lordbasilaiassistant-sudo.github.io/keylessai/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-7ab8ff?style=flat-square)](LICENSE)
 [![No API Keys](https://img.shields.io/badge/api%20keys-0-a8ffda?style=flat-square)](#)
