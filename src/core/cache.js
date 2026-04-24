@@ -26,10 +26,20 @@ export class PromptCache {
     this.misses = 0;
   }
 
-  keyFor({ model, messages }) {
+  /**
+   * Build a cache key from a request. Includes sampling params that actually
+   * affect the response, so `temperature: 0.9` and `temperature: 0` don't
+   * collide (a previous version cached only on model + messages, which was
+   * correct for deterministic calls but wrong for high-temperature callers).
+   */
+  keyFor({ model, messages, temperature, top_p, tools, response_format }) {
     return JSON.stringify({
       m: model || "",
       msgs: (messages || []).map((m) => ({ r: m.role, c: m.content })),
+      t: temperature ?? null,
+      p: top_p ?? null,
+      tl: tools ? JSON.stringify(tools) : null,
+      rf: response_format ? JSON.stringify(response_format) : null,
     });
   }
 
