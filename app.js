@@ -197,6 +197,8 @@ async function requestAssistant() {
 
   const triedProviders = [];
   let streamed = "";
+  let reasoningChars = 0;
+  let thinkingStart = 0;
   try {
     for await (const chunk of streamChat({
       provider: routerProvider,
@@ -211,7 +213,27 @@ async function requestAssistant() {
         if (badge) badge.textContent = p;
       },
     })) {
+      if (chunk.type === "reasoning") {
+        if (!streamed) {
+          if (!thinkingStart) thinkingStart = Date.now();
+          reasoningChars += chunk.text.length;
+          // Replace cursor with a thinking label while we wait for real content.
+          bubble.classList.remove("cursor");
+          bubble.classList.add("thinking");
+          bubble.textContent = `thinking… (${reasoningChars} reasoning chars so far)`;
+        }
+        continue;
+      }
       if (chunk.type === "content") {
+        if (!streamed) {
+          bubble.classList.remove("thinking");
+          bubble.classList.add("cursor");
+          bubble.textContent = "";
+          if (thinkingStart) {
+            const elapsed = ((Date.now() - thinkingStart) / 1000).toFixed(1);
+            setStatus(`thought for ${elapsed}s · streaming…`);
+          }
+        }
         streamed += chunk.text;
         bubble.innerHTML = renderMarkdownHtml(streamed);
         attachCodeCopyHandlers(bubble);
