@@ -63,6 +63,9 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+const CONVERSATION_KEY = "keylessai:conversation:v1";
+const MAX_STORED_TURNS = 50;
+
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem("keylessai:state") || "null");
@@ -81,6 +84,43 @@ function saveState() {
       })
     );
   } catch {}
+}
+
+function saveConversation() {
+  try {
+    const trimmed = state.conversation.slice(-MAX_STORED_TURNS);
+    if (trimmed.length === 0) {
+      localStorage.removeItem(CONVERSATION_KEY);
+      return;
+    }
+    localStorage.setItem(CONVERSATION_KEY, JSON.stringify(trimmed));
+  } catch {}
+}
+
+function loadConversation() {
+  try {
+    const raw = localStorage.getItem(CONVERSATION_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return;
+    state.conversation = parsed
+      .filter((m) => m && typeof m.content === "string" && (m.role === "user" || m.role === "assistant"))
+      .slice(-MAX_STORED_TURNS);
+    for (const msg of state.conversation) {
+      addMessage(msg.role, msg.content, msg.role === "assistant" ? { provider: "restored" } : {});
+    }
+    if (state.conversation.length > 0) {
+      hideHero();
+    }
+  } catch {
+    // corrupt state — clear it
+    try { localStorage.removeItem(CONVERSATION_KEY); } catch {}
+  }
+}
+
+function clearConversation() {
+  state.conversation = [];
+  try { localStorage.removeItem(CONVERSATION_KEY); } catch {}
 }
 
 function addMessage(role, text, { provider } = {}) {
@@ -180,7 +220,7 @@ modelSelect.addEventListener("change", () => {
 
 newChatBtn.addEventListener("click", () => {
   if (state.streaming) state.controller?.abort();
-  state.conversation = [];
+  clearConversation();
   messagesEl.innerHTML = "";
   setStatus("");
   if (heroEl) heroEl.hidden = false;
@@ -222,6 +262,7 @@ inputEl.addEventListener("keydown", (e) => {
 async function send(userText) {
   addMessage("user", userText);
   state.conversation.push({ role: "user", content: userText });
+  saveConversation();
   await requestAssistant();
 }
 
@@ -270,6 +311,7 @@ async function requestAssistant() {
       bubble.textContent = "(no output)";
     }
     state.conversation.push({ role: "assistant", content: streamed });
+    saveConversation();
     setStatus(`done · ${state.activeProvider || "?"}`, "ok");
   } catch (err) {
     bubble.classList.remove("cursor");
@@ -277,6 +319,7 @@ async function requestAssistant() {
       setStatus("aborted", "");
       if (streamed) {
         state.conversation.push({ role: "assistant", content: streamed });
+        saveConversation();
       }
     } else {
       bubble.textContent = streamed || `error: ${err.message || String(err)}`;
@@ -369,6 +412,7 @@ function checkDonatedRedirect() {
 (async function init() {
   loadState();
   renderSuggestions();
+  loadConversation();
   checkDonatedRedirect();
   try {
     await populateModels();
