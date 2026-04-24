@@ -16,19 +16,123 @@ import { defaultMetrics } from "./metrics.js";
 export const breaker = defaultBreaker;
 export const metrics = defaultMetrics;
 
-/** Registry of all installed providers, keyed by their `id`. */
+/**
+ * Registry of all installed providers, keyed by their `id`.
+ *
+ * To add a custom provider, use `registerProvider()` below. Direct mutation
+ * works but is discouraged (no shape validation, no auto-insert into
+ * failover order).
+ */
 export const PROVIDERS = {
   [pollinations.id]: pollinations,
   [pollinationsGet.id]: pollinationsGet,
   [airforce.id]: airforce,
 };
 
-/** Order the router tries providers in when `provider: "auto"`. */
+/**
+ * Order the router tries providers in when `provider: "auto"`. Mutate via
+ * `setFailoverOrder()`, or directly for advanced use.
+ */
 export const FAILOVER_ORDER = [
   pollinations.id,
   airforce.id,
   pollinationsGet.id,
 ];
+
+/**
+ * Register a custom provider with the router.
+ *
+ * Provider module shape:
+ * ```
+ * {
+ *   id: "my-provider",                    // unique string id
+ *   label: "My Provider",                 // human-readable
+ *   async listModels() { ... },           // returns [{id, label, provider}]
+ *   async healthCheck() { ... },          // returns boolean
+ *   async* streamChat({ model, messages, signal, onStatus }) { ... }
+ * }
+ * ```
+ *
+ * The provider is appended to `FAILOVER_ORDER` by default (can be overridden).
+ * Throws if the module doesn't match the expected shape.
+ *
+ * @param {object} providerModule
+ * @param {object} [options]
+ * @param {boolean} [options.prepend=false] Insert at the FRONT of FAILOVER_ORDER (try first).
+ * @param {boolean} [options.addToFailover=true] Add to FAILOVER_ORDER at all.
+ * @returns {string} The registered provider's id.
+ *
+ * @example
+ * import { registerProvider } from "keylessai/router";
+ *
+ * const myProvider = {
+ *   id: "my-cool-provider",
+ *   label: "My Cool Provider",
+ *   async listModels() { return [{ id: "cool-1", label: "Cool 1", provider: "my-cool-provider" }]; },
+ *   async healthCheck() { return true; },
+ *   async* streamChat({ messages }) {
+ *     yield { type: "content", text: "Hello from MCP!" };
+ *   },
+ * };
+ *
+ * registerProvider(myProvider, { prepend: true });
+ */
+export function registerProvider(providerModule, { prepend = false, addToFailover = true } = {}) {
+  if (!providerModule || typeof providerModule !== "object") {
+    throw new TypeError("registerProvider: provider module must be an object");
+  }
+  const required = ["id", "label", "listModels", "healthCheck", "streamChat"];
+  for (const field of required) {
+    if (providerModule[field] === undefined) {
+      throw new TypeError(`registerProvider: provider is missing required field "${field}"`);
+    }
+  }
+  if (typeof providerModule.id !== "string" || !providerModule.id.length) {
+    throw new TypeError("registerProvider: id must be a non-empty string");
+  }
+  if (typeof providerModule.streamChat !== "function") {
+    throw new TypeError("registerProvider: streamChat must be a function");
+  }
+
+  PROVIDERS[providerModule.id] = providerModule;
+  if (addToFailover) {
+    const idx = FAILOVER_ORDER.indexOf(providerModule.id);
+    if (idx >= 0) FAILOVER_ORDER.splice(idx, 1);
+    if (prepend) FAILOVER_ORDER.unshift(providerModule.id);
+    else FAILOVER_ORDER.push(providerModule.id);
+  }
+  return providerModule.id;
+}
+
+/**
+ * Remove a provider from the router.
+ * @param {string} id
+ * @returns {boolean} true if removed, false if not registered.
+ */
+export function unregisterProvider(id) {
+  if (!PROVIDERS[id]) return false;
+  delete PROVIDERS[id];
+  const idx = FAILOVER_ORDER.indexOf(id);
+  if (idx >= 0) FAILOVER_ORDER.splice(idx, 1);
+  return true;
+}
+
+/**
+ * Replace the entire failover order.
+ * @param {string[]} ids
+ */
+export function setFailoverOrder(ids) {
+  if (!Array.isArray(ids)) {
+    throw new TypeError("setFailoverOrder: argument must be an array of provider ids");
+  }
+  for (const id of ids) {
+    if (!PROVIDERS[id]) {
+      throw new Error(`setFailoverOrder: unknown provider "${id}"`);
+    }
+  }
+  FAILOVER_ORDER.length = 0;
+  FAILOVER_ORDER.push(...ids);
+}
 
 /**
  * Shared slot gate. Every `streamChat` call acquires it before starting so

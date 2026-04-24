@@ -146,6 +146,55 @@ The router retries providers in order on any failure, serializes calls through a
 - **Public endpoints are public endpoints.** Pollinations and ApiAirforce are free because their sponsors cover bandwidth. Be respectful &mdash; don't hammer them with 1000 rps from a hot loop. If you're building a product that relies on this, self-host Pollinations (their code is open source) or add more providers to the pool.
 - **Privacy.** Calls to the upstream providers leave your machine &mdash; treat them like any third-party LLM call. For full privacy, use a local-only stack (llama.cpp, Ollama, LM Studio) outside KeylessAI.
 
+## Use as a library
+
+KeylessAI is also an ES-module library. Anything the proxy does programmatically, you can do from your own Node code — including registering custom providers alongside Pollinations/ApiAirforce so your app fails over across *your* backends too.
+
+```bash
+# Install from GitHub (no npm publish required yet):
+npm install github:lordbasilaiassistant-sudo/keylessai
+# or pin a tag:
+npm install github:lordbasilaiassistant-sudo/keylessai#v0.2.1
+```
+
+```js
+import {
+  streamChat,
+  registerProvider,
+  setFailoverOrder,
+  createProxy,
+  PROVIDERS,
+  slotGate,
+  defaultCache,
+} from "keylessai";
+
+// Register your own provider — could be a self-hosted Ollama, a paid API
+// you want to fall back to, a mock for testing, anything that implements
+// the five required fields.
+registerProvider({
+  id: "my-local-mock",
+  label: "Local Mock",
+  async listModels() { return [{ id: "mock-1", label: "mock", provider: "my-local-mock" }]; },
+  async healthCheck() { return true; },
+  async* streamChat({ messages }) {
+    yield { type: "content", text: "hello from my own provider" };
+  },
+}, { prepend: true }); // try mine first
+
+// Use the router directly
+for await (const chunk of streamChat({
+  provider: "auto",
+  messages: [{ role: "user", content: "hi" }],
+})) {
+  if (chunk.type === "content") process.stdout.write(chunk.text);
+}
+
+// Or boot the OpenAI-compatible proxy and point your OpenAI SDK at it
+createProxy().listen(8787);
+```
+
+Runnable example: [`examples/custom-provider.mjs`](examples/custom-provider.mjs)
+
 ## Self-host
 
 This is a pure static site. To run locally:
