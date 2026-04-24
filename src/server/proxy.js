@@ -1,6 +1,11 @@
 import { createServer } from "node:http";
 import { streamChat, listAllModels, PROVIDERS } from "../core/router.js";
 import { defaultCache } from "../core/cache.js";
+import {
+  validateChatBody,
+  validateCompletionsBody,
+  ValidationError,
+} from "./validate.js";
 
 const MODEL_ALIASES = {
   "gpt-3.5-turbo": "openai-fast",
@@ -83,6 +88,7 @@ async function handleChatCompletions(req, res, log) {
   let body;
   try {
     body = await readBody(req);
+    validateChatBody(body);
   } catch (e) {
     const status = e.httpStatus || 400;
     const type = e.httpType || "invalid_request_error";
@@ -92,10 +98,8 @@ async function handleChatCompletions(req, res, log) {
 }
 
 async function handleChatCompletionsWithBody(req, res, body, log) {
-  const messages = Array.isArray(body.messages) ? body.messages : null;
-  if (!messages || !messages.length) {
-    return sendError(res, 400, "messages is required", "invalid_request_error");
-  }
+  // Body was already validated in handleChatCompletions OR handleLegacyCompletions.
+  const messages = body.messages;
 
   const requestedModel = body.model || "openai-fast";
   const model = resolveModel(requestedModel);
@@ -275,20 +279,26 @@ async function handleLegacyCompletions(req, res, log) {
   let body;
   try {
     body = await readBody(req);
+    validateCompletionsBody(body);
   } catch (e) {
-    return sendError(res, 400, e.message, "invalid_request_error");
-  }
-  const prompt = typeof body.prompt === "string" ? body.prompt : null;
-  if (!prompt) {
-    return sendError(res, 400, "prompt is required (string)", "invalid_request_error");
+    const status = e.httpStatus || 400;
+    const type = e.httpType || "invalid_request_error";
+    return sendError(res, status, e.message, type);
   }
   // Rewrite `prompt` to chat-style `messages` and reuse the full pipeline:
   // caching, streaming, notice-detection, queue, provider failover.
+  // Re-validate the rewritten body through the chat validator so the same
+  // size / role / prototype-pollution guards apply.
   const rewritten = {
     ...body,
-    messages: [{ role: "user", content: prompt }],
+    messages: [{ role: "user", content: body.prompt }],
   };
   delete rewritten.prompt;
+  try {
+    validateChatBody(rewritten);
+  } catch (e) {
+    return sendError(res, e.httpStatus || 400, e.message, e.httpType || "invalid_request_error");
+  }
   return handleChatCompletionsWithBody(req, res, rewritten, log);
 }
 
