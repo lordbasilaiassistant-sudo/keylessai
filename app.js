@@ -1,4 +1,5 @@
 import { streamChat, listAllModels, PROVIDERS } from "./router.js";
+import { renderMarkdownHtml, attachCodeCopyHandlers } from "./src/markdown.js";
 
 const $ = (id) => document.getElementById(id);
 const messagesEl = $("messages");
@@ -137,7 +138,12 @@ function addMessage(role, text, { provider } = {}) {
   }
   const bubble = document.createElement("div");
   bubble.className = "bubble";
-  bubble.textContent = text || "";
+  if (role === "assistant" && text) {
+    bubble.innerHTML = renderMarkdownHtml(text);
+    attachCodeCopyHandlers(bubble);
+  } else {
+    bubble.textContent = text || "";
+  }
   wrap.appendChild(roleEl);
   wrap.appendChild(bubble);
   messagesEl.appendChild(wrap);
@@ -301,7 +307,8 @@ async function requestAssistant() {
     })) {
       if (chunk.type === "content") {
         streamed += chunk.text;
-        bubble.textContent = streamed;
+        bubble.innerHTML = renderMarkdownHtml(streamed);
+        attachCodeCopyHandlers(bubble);
         messagesEl.scrollTop = messagesEl.scrollHeight;
       }
     }
@@ -309,6 +316,9 @@ async function requestAssistant() {
     bubble.classList.remove("cursor");
     if (!streamed) {
       bubble.textContent = "(no output)";
+    } else {
+      bubble.innerHTML = renderMarkdownHtml(streamed);
+      attachCodeCopyHandlers(bubble);
     }
     state.conversation.push({ role: "assistant", content: streamed });
     saveConversation();
