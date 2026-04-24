@@ -1,20 +1,34 @@
+/**
+ * Provider orchestration: health checks, failover, notice/ad detection,
+ * retry-with-backoff, and client-side serialization through the slot gate.
+ *
+ * @module core/router
+ */
+
 import * as pollinations from "../../providers/pollinations.js";
 import * as pollinationsGet from "../../providers/pollinations-get.js";
 import * as airforce from "../../providers/airforce.js";
 import { defaultSlotGate } from "./queue.js";
 
+/** Registry of all installed providers, keyed by their `id`. */
 export const PROVIDERS = {
   [pollinations.id]: pollinations,
   [pollinationsGet.id]: pollinationsGet,
   [airforce.id]: airforce,
 };
 
+/** Order the router tries providers in when `provider: "auto"`. */
 export const FAILOVER_ORDER = [
   pollinations.id,
   airforce.id,
   pollinationsGet.id,
 ];
 
+/**
+ * Shared slot gate. Every `streamChat` call acquires it before starting so
+ * parallel callers serialize cleanly under Pollinations' 1-concurrent-per-IP
+ * rate limit. Exposed for observability (`gate.depth`, `gate.estimatedWaitMs`).
+ */
 export const slotGate = defaultSlotGate;
 
 const NOTICE_PATTERNS = [
@@ -40,6 +54,11 @@ function looksLikeNotice(text) {
   return looksShortAndMostlyLinks;
 }
 
+/**
+ * Lists models from every registered provider.
+ *
+ * @returns {Promise<Array<{provider: string, label: string, models: Array<{id: string, label: string, provider: string}>}>>}
+ */
 export async function listAllModels() {
   const groups = [];
   for (const key of FAILOVER_ORDER) {
@@ -110,6 +129,20 @@ async function* tryOne({ providerId, model, messages, signal, onStatus }) {
   throw lastErr || new Error(`${providerId} gave only notices/errors after ${MAX_RETRIES} tries`);
 }
 
+/**
+ * Streams a chat completion through the provider pool with failover, retry,
+ * and notice/ad detection. Yields chunks: `{type:"content",text:string}` for
+ * regular tokens, `{type:"reasoning",text:string}` for thinking tokens.
+ *
+ * @param {object} options
+ * @param {string} [options.provider="auto"]      Provider id, or "auto" for failover across FAILOVER_ORDER.
+ * @param {string} [options.model]                Provider-specific model id. If omitted, provider picks its default.
+ * @param {Array<{role:string,content:string}>} options.messages
+ * @param {AbortSignal} [options.signal]          Abort the stream.
+ * @param {(msg:string)=>void} [options.onStatus] Fires on each internal state change (queued, retrying, via X, etc.).
+ * @param {(id:string)=>void} [options.onProviderChange] Fires with the active provider id whenever it changes.
+ * @returns {AsyncGenerator<{type:"content"|"reasoning",text:string}>}
+ */
 export async function* streamChat({
   provider,
   model,

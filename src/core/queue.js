@@ -7,7 +7,16 @@
 // with ourselves. Different processes on the same NAT may still collide —
 // that's what the router's backoff retry handles.
 
+/**
+ * Single-flight gate. Only one acquirer holds the slot at a time; others
+ * wait in FIFO order. Bounded queue + optional per-call timeout.
+ */
 export class SlotGate {
+  /**
+   * @param {object} [options]
+   * @param {number} [options.maxQueueDepth=100]    Reject new acquires beyond this.
+   * @param {number} [options.defaultTimeoutMs=120000] Default timeout when caller doesn't specify.
+   */
   constructor({ maxQueueDepth = 100, defaultTimeoutMs = 120000 } = {}) {
     this.maxQueueDepth = maxQueueDepth;
     this.defaultTimeoutMs = defaultTimeoutMs;

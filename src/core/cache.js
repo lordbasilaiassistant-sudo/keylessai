@@ -8,7 +8,16 @@
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_MAX = 128;
 
+/**
+ * LRU + TTL cache for identical `(model, messages)` requests. Used by the
+ * proxy to avoid hammering rate-limited upstream providers during retry loops.
+ */
 export class PromptCache {
+  /**
+   * @param {object} [options]
+   * @param {number} [options.ttlMs=300000] Entry lifetime (ms).
+   * @param {number} [options.max=128]      Max entries before LRU eviction.
+   */
   constructor({ ttlMs = DEFAULT_TTL_MS, max = DEFAULT_MAX } = {}) {
     this.ttlMs = ttlMs;
     this.max = max;

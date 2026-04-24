@@ -1,6 +1,6 @@
 {
   "name": "keylessai",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Free OpenAI-compatible LLM endpoint. No API keys. Runs as a local proxy on your machine — zero cost, infinite scale.",
   "type": "module",
   "bin": {
