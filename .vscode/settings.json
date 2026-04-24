@@ -1,0 +1,13 @@
+{
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "[javascript]": { "editor.tabSize": 2 },
+  "[css]": { "editor.tabSize": 2 },
+  "[html]": { "editor.tabSize": 2 },
+  "[json]": { "editor.tabSize": 2 },
+  "[markdown]": { "editor.tabSize": 2 }
+}

@@ -22,12 +22,16 @@
     "providers",
     "README.md",
     "AGENTS.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
     "LICENSE"
   ],
   "scripts": {
     "serve": "node ./bin/keylessai.js serve",
     "test": "node --test test/markdown.test.mjs test/cache.test.mjs test/queue.test.mjs test/storage.test.mjs test/notices.test.mjs",
-    "live-test": "node ./bin/keylessai.js test"
+    "live-test": "node ./bin/keylessai.js test",
+    "doctor": "node ./bin/keylessai.js doctor",
+    "prepublishOnly": "npm test"
   },
   "keywords": [
     "openai",
