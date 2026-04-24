@@ -277,14 +277,18 @@ export async function* streamChat({
       return;
     }
 
-    // Auto mode: hit providers in FAILOVER_ORDER, no health checks (saves
-    // a /models round-trip per provider), no same-provider retries (failFast),
-    // no delay between providers. First provider that streams actual content
-    // wins; any failure -> immediate jump to the next.
+    // Auto mode: hit providers in adaptively-ranked order. Base order is
+    // FAILOVER_ORDER, but we let live metrics bubble the best-performing
+    // providers to the front. This means if Pollinations starts flaking,
+    // ApiAirforce takes the lead automatically — no config change, no
+    // human intervention.
+    //
     // Circuit breaker skips providers that have failed 5+ times in a row
-    // for 30 seconds.
+    // for 30 seconds. Remaining candidates are ranked by `metrics.score()`
+    // which combines success rate (weighted) and TTFB.
+    const ranked = metrics.rank(FAILOVER_ORDER);
     let lastErr;
-    for (const id of FAILOVER_ORDER) {
+    for (const id of ranked) {
       const p = PROVIDERS[id];
       if (breaker.isOpen(id)) {
         if (onStatus) onStatus(`${p.label} circuit open — skipping`);
