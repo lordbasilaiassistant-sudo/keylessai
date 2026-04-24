@@ -59,9 +59,12 @@ test("queue full rejects when maxQueueDepth reached", async () => {
 test("timeout rejects pending acquire", async () => {
   const gate = new SlotGate();
   const r1 = await gate.acquire();
-  await assert.rejects(
-    () => gate.acquire({ timeoutMs: 20 }),
-    /queue timeout/
-  );
-  r1();
+  try {
+    await assert.rejects(
+      () => gate.acquire({ timeoutMs: 60 }),
+      /queue timeout/
+    );
+  } finally {
+    r1();
+  }
 });

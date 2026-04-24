@@ -38,13 +38,16 @@ export class SlotGate {
       const entry = { resolve, reject, deadline };
       this.waiting.push(entry);
       if (timeoutMs) {
+        // Do NOT unref — the pending await is expecting this timer to fire
+        // and reject the promise. Unref'ing lets the event loop exit before
+        // the timeout resolves, which leaves the test/caller hanging.
         setTimeout(() => {
           const idx = this.waiting.indexOf(entry);
           if (idx >= 0) {
             this.waiting.splice(idx, 1);
             reject(new Error("keylessai: queue timeout waiting for slot"));
           }
-        }, timeoutMs).unref?.();
+        }, timeoutMs);
       }
     }).then(() => () => this.#release());
   }
