@@ -1,0 +1,35 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Syntax check every JS file
+        run: |
+          set -euo pipefail
+          fail=0
+          for f in app.js api.js router.js src/*.js bin/*.js providers/*.js test/*.mjs; do
+            if [ -f "$f" ]; then
+              node --check "$f" || { echo "  FAIL $f"; fail=1; }
+            fi
+          done
+          if [ "$fail" -eq 1 ]; then exit 1; fi
+
+      - name: Run test suite
+        run: node --test test/markdown.test.mjs test/cache.test.mjs test/queue.test.mjs
