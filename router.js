@@ -1,24 +1,43 @@
 import * as pollinations from "./providers/pollinations.js";
 import * as pollinationsGet from "./providers/pollinations-get.js";
+import * as airforce from "./providers/airforce.js";
+import { defaultSlotGate } from "./src/queue.js";
 
 export const PROVIDERS = {
   [pollinations.id]: pollinations,
   [pollinationsGet.id]: pollinationsGet,
+  [airforce.id]: airforce,
 };
 
-export const FAILOVER_ORDER = [pollinations.id, pollinationsGet.id];
+export const FAILOVER_ORDER = [
+  pollinations.id,
+  airforce.id,
+  pollinationsGet.id,
+];
+
+export const slotGate = defaultSlotGate;
 
 const NOTICE_PATTERNS = [
   /important notice/i,
   /legacy .{0,40}api is being deprecated/i,
   /please migrate to/i,
   /enter\.pollinations\.ai/i,
+  /upgrade your plan/i,
+  /discord\.gg\/airforce/i,
+  /\bapi\.airforce\b/i,
+  /need proxies cheaper than/i,
+  /op\.wtf/i,
+  /remove this message at/i,
 ];
 
 function looksLikeNotice(text) {
-  if (!text || text.length < 30) return false;
-  const head = text.slice(0, 400);
-  return NOTICE_PATTERNS.filter((re) => re.test(head)).length >= 2;
+  if (!text) return false;
+  const sample = text.slice(0, 600);
+  const hits = NOTICE_PATTERNS.filter((re) => re.test(sample)).length;
+  if (hits >= 2) return true;
+  const hasAnyUrl = /https?:\/\//i.test(sample);
+  const looksShortAndMostlyLinks = sample.length < 300 && hasAnyUrl && hits >= 1;
+  return looksShortAndMostlyLinks;
 }
 
 export async function listAllModels() {
@@ -99,39 +118,47 @@ export async function* streamChat({
   onStatus,
   onProviderChange,
 }) {
-  if (provider && provider !== "auto") {
-    if (onProviderChange) onProviderChange(provider);
-    yield* tryOne({ providerId: provider, model, messages, signal, onStatus });
-    return;
+  if (slotGate.depth > 0 && onStatus) {
+    onStatus(`queued (${slotGate.depth} ahead, ~${Math.round(slotGate.estimatedWaitMs / 1000)}s wait)…`);
   }
-
-  let lastErr;
-  for (const id of FAILOVER_ORDER) {
-    const p = PROVIDERS[id];
-    try {
-      const healthy = await p.healthCheck();
-      if (!healthy) {
-        lastErr = new Error(`${id} health check failed`);
-        continue;
-      }
-      if (onProviderChange) onProviderChange(id);
-      if (onStatus) onStatus(`via ${p.label}…`);
-      let emitted = false;
-      for await (const chunk of tryOne({
-        providerId: id,
-        model: id === provider ? model : model,
-        messages,
-        signal,
-        onStatus,
-      })) {
-        emitted = true;
-        yield chunk;
-      }
-      if (emitted) return;
-    } catch (e) {
-      lastErr = e;
-      if (onStatus) onStatus(`${p.label} failed: ${e.message}. trying next…`);
+  const release = await slotGate.acquire();
+  try {
+    if (provider && provider !== "auto") {
+      if (onProviderChange) onProviderChange(provider);
+      yield* tryOne({ providerId: provider, model, messages, signal, onStatus });
+      return;
     }
+
+    let lastErr;
+    for (const id of FAILOVER_ORDER) {
+      const p = PROVIDERS[id];
+      try {
+        const healthy = await p.healthCheck();
+        if (!healthy) {
+          lastErr = new Error(`${id} health check failed`);
+          continue;
+        }
+        if (onProviderChange) onProviderChange(id);
+        if (onStatus) onStatus(`via ${p.label}…`);
+        let emitted = false;
+        for await (const chunk of tryOne({
+          providerId: id,
+          model,
+          messages,
+          signal,
+          onStatus,
+        })) {
+          emitted = true;
+          yield chunk;
+        }
+        if (emitted) return;
+      } catch (e) {
+        lastErr = e;
+        if (onStatus) onStatus(`${p.label} failed: ${e.message}. trying next…`);
+      }
+    }
+    throw lastErr || new Error("all providers failed");
+  } finally {
+    release();
   }
-  throw lastErr || new Error("all providers failed");
 }
