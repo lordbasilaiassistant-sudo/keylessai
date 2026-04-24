@@ -421,6 +421,41 @@ main.chat {
   letter-spacing: 0.02em;
 }
 
+.msg-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+
+.msg-action {
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.msg-action:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--panel);
+}
+
+.msg-tried {
+  color: var(--dim);
+  margin-left: auto;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+}
+
 /* ===== STATUS + THINKING DOTS ===== */
 
 .status {
