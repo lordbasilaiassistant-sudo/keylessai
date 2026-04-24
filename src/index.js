@@ -27,6 +27,14 @@ export {
   PROVIDERS,
   FAILOVER_ORDER,
   slotGate,
+  breaker,
+  metrics,
+  registerProvider,
+  unregisterProvider,
+  setFailoverOrder,
 } from "./core/router.js";
 export { PromptCache, defaultCache } from "./core/cache.js";
 export { SlotGate, defaultSlotGate } from "./core/queue.js";
+export { CircuitBreaker, defaultBreaker } from "./core/circuit.js";
+export { ProviderMetrics, defaultMetrics } from "./core/metrics.js";
+export { looksLikeNotice, NOTICE_PATTERNS } from "./core/notices.js";
