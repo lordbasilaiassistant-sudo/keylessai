@@ -12,7 +12,7 @@ from langchain_openai import ChatOpenAI
 
 def main() -> None:
     llm = ChatOpenAI(
-        base_url="https://text.pollinations.ai",
+        base_url="https://keylessai.thryx.workers.dev/v1",
         api_key="not-needed",
         model="openai-fast",
         streaming=True,

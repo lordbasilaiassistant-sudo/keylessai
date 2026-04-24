@@ -89,7 +89,7 @@ function renderDrawer() {
   lede.className = "api-lede";
   lede.innerHTML = `
     <strong>The whole point: zero setup, zero compute, zero cost.</strong><br/>
-    Set <code>OPENAI_API_BASE=https://text.pollinations.ai</code> and pass any non-empty string as the API key.
+    Set <code>OPENAI_API_BASE=https://keylessai.thryx.workers.dev/v1</code> and pass any non-empty string as the API key.
     Every OpenAI-compatible tool &mdash; Aider, Cline, Continue, Codex, LangChain, the official OpenAI SDK &mdash; just works.
     Model: <code>openai-fast</code>.
   `;

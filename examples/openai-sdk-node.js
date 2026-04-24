@@ -4,7 +4,7 @@
 import OpenAI from "openai";
 
 const client = new OpenAI({
-  baseURL: "https://text.pollinations.ai",
+  baseURL: "https://keylessai.thryx.workers.dev/v1",
   apiKey: "not-needed",
 });
 

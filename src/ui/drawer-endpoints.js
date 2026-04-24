@@ -4,7 +4,7 @@
 export const ENDPOINTS = [
   {
     method: "post",
-    url: "https://text.pollinations.ai/openai",
+    url: "https://keylessai.thryx.workers.dev/v1/chat/completions",
     title: "Direct swap — zero install, zero compute, one env var",
     desc:
       "This is the primary path. Nothing runs on your machine. You change one environment variable and your existing OpenAI code works. Pass <code>openai-fast</code> as the model (or <code>openai</code>, its alias).",
@@ -12,8 +12,8 @@ export const ENDPOINTS = [
       {
         name: "env (bash)",
         code: `# Works with ANY tool that reads these env vars.
-export OPENAI_API_BASE="https://text.pollinations.ai"
-export OPENAI_BASE_URL="https://text.pollinations.ai"
+export OPENAI_API_BASE="https://keylessai.thryx.workers.dev/v1"
+export OPENAI_BASE_URL="https://keylessai.thryx.workers.dev/v1"
 export OPENAI_API_KEY="not-needed"
 export OPENAI_MODEL="openai-fast"
 
@@ -22,13 +22,13 @@ export OPENAI_MODEL="openai-fast"
       {
         name: "aider",
         code: `# pip install aider-chat
-export OPENAI_API_BASE="https://text.pollinations.ai"
+export OPENAI_API_BASE="https://keylessai.thryx.workers.dev/v1"
 export OPENAI_API_KEY="not-needed"
 
 aider --model openai/openai-fast
 
 # Or one-off:
-aider --openai-api-base https://text.pollinations.ai \\
+aider --openai-api-base https://keylessai.thryx.workers.dev/v1 \\
       --openai-api-key  not-needed \\
       --model openai/openai-fast`,
       },
@@ -37,7 +37,7 @@ aider --openai-api-base https://text.pollinations.ai \\
         code: `// VS Code settings.json
 {
   "cline.apiProvider": "openai",
-  "cline.openAiBaseUrl": "https://text.pollinations.ai",
+  "cline.openAiBaseUrl": "https://keylessai.thryx.workers.dev/v1",
   "cline.openAiApiKey": "not-needed",
   "cline.openAiModelId": "openai-fast"
 }
@@ -51,7 +51,7 @@ aider --openai-api-base https://text.pollinations.ai \\
   "models": [{
     "title": "KeylessAI (gpt-oss-20b)",
     "provider": "openai",
-    "apiBase": "https://text.pollinations.ai",
+    "apiBase": "https://keylessai.thryx.workers.dev/v1",
     "apiKey": "not-needed",
     "model": "openai-fast"
   }]
@@ -60,7 +60,7 @@ aider --openai-api-base https://text.pollinations.ai \\
       {
         name: "codex",
         code: `# OpenAI's Codex CLI
-export OPENAI_BASE_URL="https://text.pollinations.ai"
+export OPENAI_BASE_URL="https://keylessai.thryx.workers.dev/v1"
 export OPENAI_API_KEY="not-needed"
 
 codex --model openai-fast`,
@@ -71,7 +71,7 @@ codex --model openai-fast`,
 import OpenAI from "openai";
 
 const client = new OpenAI({
-  baseURL: "https://text.pollinations.ai",
+  baseURL: "https://keylessai.thryx.workers.dev/v1",
   apiKey: "not-needed",
 });
 
@@ -91,7 +91,7 @@ for await (const chunk of stream) {
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://text.pollinations.ai",
+    base_url="https://keylessai.thryx.workers.dev/v1",
     api_key="not-needed",
 )
 
@@ -110,7 +110,7 @@ for chunk in stream:
 from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(
-    base_url="https://text.pollinations.ai",
+    base_url="https://keylessai.thryx.workers.dev/v1",
     api_key="not-needed",
     model="openai-fast",
     streaming=True,
@@ -120,7 +120,7 @@ for chunk in llm.stream("Explain autonomous agents in 2 sentences."):
       },
       {
         name: "curl",
-        code: `curl -N https://text.pollinations.ai/openai \\
+        code: `curl -N https://keylessai.thryx.workers.dev/v1/chat/completions \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "openai-fast",
@@ -133,9 +133,9 @@ for chunk in llm.stream("Explain autonomous agents in 2 sentences."):
   {
     method: "get",
     url: "https://text.pollinations.ai/{prompt}?model=openai-fast",
-    title: "Simple GET — shell one-liner",
+    title: "Advanced: upstream GET (bypasses our Worker)",
     desc:
-      "URL-encode your prompt, get plain text back. Ideal for scripts, cron jobs, anywhere only HTTP GET is available.",
+      "Hit Pollinations directly with a URL-encoded prompt. Use when you want to skip our Worker and go straight to the upstream (no rate-limit of ours, no aliasing, no failover). Good for shell scripts where only HTTP GET is available.",
     tabs: [
       {
         name: "curl",
@@ -163,7 +163,7 @@ print(requests.get(url).text)`,
     url: "claude code bridge (anthropic format)",
     title: "Claude Code — bridge via LiteLLM",
     desc:
-      "Claude Code speaks Anthropic's Messages API. LiteLLM proxy translates Anthropic &harr; OpenAI so Claude Code can talk to Pollinations. Runs as a local Python process that you launch when you want it.",
+      "Claude Code speaks Anthropic's Messages API. LiteLLM translates Anthropic &harr; OpenAI so Claude Code can talk to KeylessAI. Runs as a local Python process that you launch when you want it.",
     tabs: [
       {
         name: "setup",
@@ -174,7 +174,7 @@ model_list:
   - model_name: claude-3-5-sonnet-20241022
     litellm_params:
       model: openai/openai-fast
-      api_base: https://text.pollinations.ai
+      api_base: https://keylessai.thryx.workers.dev/v1
       api_key: not-needed
 EOF
 
@@ -188,21 +188,19 @@ claude   # now on KeylessAI, free.`,
   },
   {
     method: "npm",
-    url: "npx github:lordbasilaiassistant-sudo/keylessai serve",
-    title: "Optional: local proxy (for model-name aliasing)",
+    url: "npx github:lordbasilaiassistant-sudo/keylessai serve --local",
+    title: "Optional: run on localhost",
     desc:
-      "Only use this if your tool hardcodes model names like <code>gpt-4o</code> or <code>claude-3-5-sonnet-latest</code> and you can't change them. The proxy accepts any OpenAI model name and transparently routes it to <code>openai-fast</code>. Runs as a tiny local Node process &mdash; no inference, just HTTP forwarding.",
+      "Prefer zero external deps? Spin up the same proxy on your machine. Good for air-gapped setups, corporate firewalls, or when you want the router code running in your own process.",
     tabs: [
       {
         name: "run",
         code: `# Starts on 127.0.0.1:8787. No install beyond Node 18+.
-npx github:lordbasilaiassistant-sudo/keylessai serve
+npx github:lordbasilaiassistant-sudo/keylessai serve --local
 
 # Then:
 export OPENAI_API_BASE="http://127.0.0.1:8787/v1"
-export OPENAI_API_KEY="not-needed"
-# Now your tool can use "gpt-4o", "claude-3-5-sonnet-latest", etc. —
-# the proxy transparently maps them to openai-fast.`,
+export OPENAI_API_KEY="not-needed"`,
       },
     ],
   },
