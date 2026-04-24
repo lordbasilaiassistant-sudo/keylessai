@@ -4,9 +4,47 @@ Notable changes. This project follows [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-04-24
+
+Reliability + dogfood pass. No breaking changes. Upgrade is safe for anyone on 0.2.0.
+
 ### Added
-- Drawer endpoint data extracted to `src/ui/drawer-endpoints.js` for easier editing
-- CHANGELOG.md (this file)
+- **Dogfood test harness** (`dogfood/`) — runnable end-to-end tests that actually exercise real third-party SDKs (OpenAI Node, OpenAI Python, LangChain) + raw curl + /v1/completions + /v1/embeddings. Nightly CI workflow runs them and uploads 30-day transcript artifacts.
+- **Stream watchdog** (`src/core/stream.js`) — heartbeat (45s) + overall deadline (180s) + fetch-level timeout (30s). Providers' `streamChat` now uses `readWithWatchdog()` so upstream silent-hangs trigger failover instead of hanging forever.
+- **Circuit breaker** (`src/core/circuit.js`) — 5 consecutive failures opens the circuit per provider, 30s cooldown, then half-open. Router skips open providers instantly.
+- **Per-provider latency metrics** (`src/core/metrics.js`) — rolling p50/p95 TTFB + success rate over the last 100 samples per provider. Exposed on `/health`.
+- **Graceful shutdown** — `server.drain(graceMs)` waits for in-flight requests to finish before exiting; CLI SIGINT/SIGTERM uses it.
+- **Request body cap** — 1 MiB limit on POST bodies with a clean 413 response. Prevents OOM from hostile/broken clients.
+- **`/v1/completions`** legacy endpoint (wraps `prompt` as a chat message).
+- **`/v1/embeddings` 501 stub** with a helpful error pointing users at self-hosted options.
+- **CLI `doctor` subcommand** — provider health + latency + model list + end-to-end smoke test.
+- **CHANGELOG.md** and **SECURITY.md**.
+- **CONTRIBUTING.md**, issue templates, PR template.
+- **CSP, Referrer-Policy, X-Content-Type-Options, Permissions-Policy** meta tags.
+- **`:focus-visible` ring, ARIA labels, mobile 44px tap targets, `prefers-reduced-motion`** support.
+- **Aggregator pool stats strip** on hero (honest live-verified vs upstream-tracked counts).
+- **Chat history persistence** across page reloads (localStorage, capped at 50 turns).
+- **Markdown rendering** in chat with safe code-block copy + XSS-tested link-scheme filter.
+- **Retry + switch-provider actions** on error bubbles; **copy + regenerate actions** on assistant messages.
+- **Thinking indicator** while model emits reasoning tokens before real content.
+- **Auto-deploy to GitHub Pages** via Actions.
+- **Daily provider catalog sync** from `Free-AI-Things/g4f-working` (183 tracked models across 13 upstream providers).
+- **Test suite** grew from 0 → 60 tests across 8 modules, gated in CI.
+- **JSDoc** on all public exports.
+- **`.gitattributes`**, **`.nvmrc`**, **`.vscode/settings.json`** for contributor consistency.
+
+### Changed
+- **Organized into `src/{ui,core,server}`** — clean browser / shared / Node-only split.
+- **Split 518-line `app.js`** into focused modules: `storage`, `suggestions`, `messages`, `pool-stats`.
+- **Router auto mode is now fast-fail**: no health-check round-trip, no same-provider retry, instant failover. Pinned mode keeps modest retry budgets.
+- **Cache key now includes `temperature`, `top_p`, `tools`, `response_format`** — fixes silent correctness bug where high-temperature callers got deterministic cached replies.
+- **Extracted notice detection** to `src/core/notices.js` with 9 tests covering real-world samples.
+- **Extracted drawer endpoint data** to `src/ui/drawer-endpoints.js` for easier editing.
+
+### Fixed
+- CSS specificity — inline-code styling was leaking into fenced code blocks.
+- Flaky CI queue test (`.unref()` let event loop exit before timer fired).
+- Send button was `disabled` during streaming, so clicking it couldn't abort (only Enter worked).
 
 ## [0.2.0] — 2026-04-24
 
