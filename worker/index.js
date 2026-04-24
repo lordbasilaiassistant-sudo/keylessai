@@ -46,8 +46,8 @@ const MAX_CLIENT_ERROR_MSG = 300;
 const INTERNAL_ERROR_PATTERNS = [
   /\b[a-zA-Z]:[\\/][^\s]+/g,
   /\/(usr|home|root|Users)\/[^\s]+/g,
-  /at .+\(.+:\d+:\d+\)/g,
-  /at .+:\d+:\d+/g,
+  /at [^(\n]{1,300}\([^)\n]{1,500}:\d+:\d+\)/g,
+  /at [^\s:\n]{1,300}:\d+:\d+/g,
 ];
 
 function safeErrorMessage(msg, fallback = "internal error") {
