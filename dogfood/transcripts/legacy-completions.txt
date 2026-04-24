@@ -1,0 +1,3 @@
+[dogfood/legacy-completions] POST http://127.0.0.1:8790/v1/completions
+  response: {"id":"chatcmpl-slc7uurm6cmod8cigd","object":"chat.completion","created":1777054467,"model":"openai-fast","keylessai_provider":"pollinations","choices":[{"index":0,"message":{"role":"assistant","content":"LEGACY OK"},"finish_reason":"stop"}],"usage":{"prompt_tokens":null,"completion_tokens":null,"total_tokens":null}}
+  ✓ pass (content=LEGACY OK)

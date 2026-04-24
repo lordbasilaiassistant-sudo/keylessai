@@ -1,4 +1,9 @@
+import { readWithWatchdog, combineSignalWithTimeout } from "../src/core/stream.js";
+
 const BASE = "https://text.pollinations.ai";
+const FETCH_TIMEOUT_MS = 30000;
+const HEARTBEAT_MS = 45000;
+const DEADLINE_MS = 180000;
 
 export const id = "pollinations";
 export const label = "Pollinations";
@@ -36,16 +41,23 @@ export async function healthCheck() {
 }
 
 export async function* streamChat({ model, messages, signal }) {
-  const res = await fetch(`${BASE}/openai`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: model || "openai-fast",
-      messages,
-      stream: true,
-    }),
-    signal,
-  });
+  // Compose: caller's abort signal + 30s initial-connection timeout.
+  const { signal: fetchSignal, dispose } = combineSignalWithTimeout(signal, FETCH_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(`${BASE}/openai`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: model || "openai-fast",
+        messages,
+        stream: true,
+      }),
+      signal: fetchSignal,
+    });
+  } finally {
+    dispose();
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -57,9 +69,12 @@ export async function* streamChat({ model, messages, signal }) {
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  // Stream chunks guarded by heartbeat (no data for 45s → abort) + deadline (180s total).
+  for await (const value of readWithWatchdog(reader, {
+    signal,
+    heartbeatMs: HEARTBEAT_MS,
+    deadlineMs: DEADLINE_MS,
+  })) {
     buffer += decoder.decode(value, { stream: true });
 
     let idx;
