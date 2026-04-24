@@ -456,6 +456,111 @@ main.chat {
   letter-spacing: 0.02em;
 }
 
+/* Markdown rendering inside assistant bubbles */
+
+.msg.assistant .bubble .md-p {
+  margin: 0 0 12px 0;
+  white-space: pre-wrap;
+}
+.msg.assistant .bubble .md-p:last-child { margin-bottom: 0; }
+
+.msg.assistant .bubble .md-h {
+  margin: 14px 0 8px 0;
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+.msg.assistant .bubble .md-h:first-child { margin-top: 0; }
+
+.msg.assistant .bubble .md-list {
+  margin: 0 0 12px 0;
+  padding-left: 22px;
+}
+
+.msg.assistant .bubble .md-list li {
+  margin-bottom: 4px;
+}
+
+.msg.assistant .bubble code {
+  font-family: var(--mono);
+  font-size: 12.8px;
+  background: var(--panel-inset);
+  color: var(--accent);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.msg.assistant .bubble a {
+  color: var(--blue);
+  text-decoration: underline;
+  text-decoration-color: rgba(122, 184, 255, 0.4);
+  text-underline-offset: 2px;
+}
+.msg.assistant .bubble a:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+.msg.assistant .bubble strong { color: var(--text); }
+.msg.assistant .bubble em { color: var(--muted); font-style: italic; }
+
+.mdcode {
+  background: var(--panel-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin: 10px 0;
+  overflow: hidden;
+}
+
+.mdcode-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  background: #0b0e14;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+
+.mdcode-lang {
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.mdcode-copy {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.mdcode-copy:hover { color: var(--accent); border-color: var(--accent); }
+.mdcode-copy.copied { color: var(--accent); border-color: var(--accent); }
+
+.mdcode pre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 12.8px;
+  line-height: 1.55;
+}
+
+.mdcode pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--text);
+}
+
 /* ===== STATUS + THINKING DOTS ===== */
 
 .status {
