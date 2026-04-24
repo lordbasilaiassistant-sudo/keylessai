@@ -110,7 +110,7 @@ llm = ChatOpenAI(
     model="gpt-4o",  # aliased
     streaming=True,
 )
-for chunk in llm.stream("Explain WebGPU in 2 sentences."):
+for chunk in llm.stream("Explain server-sent events in 2 sentences."):
     print(chunk.content, end="", flush=True)
 ```
 
