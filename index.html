@@ -201,8 +201,8 @@
       <span>Model</span>
       <select id="modelSelect" aria-label="Model"></select>
     </label>
-    <button id="apiBtn" class="btn ghost" title="View public API endpoints">&lt;/&gt; API</button>
-    <button id="newChatBtn" class="btn ghost" title="New chat">new</button>
+    <button id="apiBtn" class="btn ghost" title="View public API endpoints" aria-label="Open public API reference">&lt;/&gt; API</button>
+    <button id="newChatBtn" class="btn ghost" title="New chat" aria-label="Start a new chat">new</button>
   </div>
 </header>
 
@@ -224,7 +224,7 @@
   <div id="status" class="status"></div>
 
   <form id="composer" class="composer" autocomplete="off">
-    <textarea id="input" rows="1" placeholder="ask anything. enter to send, shift+enter for newline."></textarea>
+    <textarea id="input" rows="1" placeholder="ask anything. enter to send, shift+enter for newline." aria-label="Message" spellcheck="true"></textarea>
     <button type="submit" id="sendBtn" class="btn primary">send &rarr;</button>
   </form>
 </main>
