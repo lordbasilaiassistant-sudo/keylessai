@@ -222,14 +222,17 @@ inputEl.addEventListener("keydown", (e) => {
 async function send(userText) {
   addMessage("user", userText);
   state.conversation.push({ role: "user", content: userText });
+  await requestAssistant();
+}
 
+async function requestAssistant() {
   const selection = safeParse(modelSelect.value) || {};
   const providerChoice = providerSelect.value;
   const routerProvider =
     providerChoice === "auto" ? "auto" : selection.provider || providerChoice;
   const modelId = selection.model;
 
-  const { bubble, roleEl } = addMessage("assistant", "", {
+  const { wrap, bubble, roleEl } = addMessage("assistant", "", {
     provider: routerProvider === "auto" ? "auto" : routerProvider,
   });
   bubble.classList.add("cursor");
@@ -239,6 +242,7 @@ async function send(userText) {
   setStreaming(true);
   setStatus("connecting…");
 
+  const triedProviders = [];
   let streamed = "";
   try {
     for await (const chunk of streamChat({
@@ -249,6 +253,7 @@ async function send(userText) {
       onStatus: (s) => setStatus(s),
       onProviderChange: (p) => {
         state.activeProvider = p;
+        if (!triedProviders.includes(p)) triedProviders.push(p);
         const badge = roleEl.querySelector(".provider-badge");
         if (badge) badge.textContent = p;
       },
@@ -275,13 +280,52 @@ async function send(userText) {
       }
     } else {
       bubble.textContent = streamed || `error: ${err.message || String(err)}`;
-      bubble.parentElement.classList.add("error");
+      wrap.classList.add("error");
+      appendErrorActions(wrap, triedProviders);
       setStatus(err.message || "error", "err");
     }
   } finally {
     setStreaming(false);
     state.controller = null;
   }
+}
+
+function appendErrorActions(wrap, triedProviders) {
+  const actions = document.createElement("div");
+  actions.className = "msg-actions";
+
+  const retryBtn = document.createElement("button");
+  retryBtn.type = "button";
+  retryBtn.className = "msg-action";
+  retryBtn.textContent = "↻ retry";
+  retryBtn.addEventListener("click", () => {
+    if (state.streaming) return;
+    wrap.remove();
+    void requestAssistant();
+  });
+
+  const switchBtn = document.createElement("button");
+  switchBtn.type = "button";
+  switchBtn.className = "msg-action";
+  switchBtn.textContent = "↔ switch provider";
+  switchBtn.addEventListener("click", () => {
+    providerSelect.focus();
+    try {
+      providerSelect.showPicker?.();
+    } catch {}
+  });
+
+  actions.appendChild(retryBtn);
+  actions.appendChild(switchBtn);
+
+  if (triedProviders.length) {
+    const tried = document.createElement("span");
+    tried.className = "msg-tried";
+    tried.textContent = `tried: ${triedProviders.join(" → ")}`;
+    actions.appendChild(tried);
+  }
+
+  wrap.appendChild(actions);
 }
 
 function buildMessagesForSend() {
