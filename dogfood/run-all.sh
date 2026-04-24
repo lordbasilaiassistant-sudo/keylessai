@@ -18,8 +18,8 @@ trap cleanup EXIT
 echo "=== Dogfood run (mode=$MODE) ==="
 echo ""
 
-echo "[1/N] Installing node deps for dogfood/openai-node + aliased-models…"
-(cd dogfood && npm init -y > /dev/null 2>&1 && npm install openai --silent > /dev/null 2>&1 || true)
+echo "[1/N] Installing node deps (openai from dogfood/package.json)…"
+(cd dogfood && npm install --silent --no-audit --no-fund > /dev/null 2>&1 || true)
 
 if [ "$MODE" = "all" ]; then
   # Check for python launcher. On Windows we have `py`, on Linux we use python3.
@@ -35,9 +35,9 @@ if [ "$MODE" = "all" ]; then
   fi
 
   if [ "$MODE" = "all" ]; then
-    echo "[2/N] Installing python deps (openai + langchain-openai)…"
+    echo "[2/N] Installing python deps from dogfood/requirements.txt…"
     $PYTHON -m pip install --quiet --upgrade pip 2>/dev/null || true
-    $PYTHON -m pip install --quiet openai langchain-openai langchain-core 2>/dev/null || true
+    $PYTHON -m pip install --quiet -r dogfood/requirements.txt 2>/dev/null || true
   fi
 fi
 
