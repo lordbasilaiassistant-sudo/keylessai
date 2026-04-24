@@ -108,7 +108,11 @@ function loadConversation() {
       .filter((m) => m && typeof m.content === "string" && (m.role === "user" || m.role === "assistant"))
       .slice(-MAX_STORED_TURNS);
     for (const msg of state.conversation) {
-      addMessage(msg.role, msg.content, msg.role === "assistant" ? { provider: "restored" } : {});
+      const opts = msg.role === "assistant" ? { provider: "restored" } : {};
+      const { wrap } = addMessage(msg.role, msg.content, opts);
+      if (msg.role === "assistant" && msg.content) {
+        appendAssistantActions(wrap, msg.content);
+      }
     }
     if (state.conversation.length > 0) {
       hideHero();
@@ -348,6 +352,7 @@ async function requestAssistant() {
     } else {
       bubble.innerHTML = renderMarkdownHtml(streamed);
       attachCodeCopyHandlers(bubble);
+      appendAssistantActions(wrap, streamed);
     }
     state.conversation.push({ role: "assistant", content: streamed });
     saveConversation();
@@ -370,6 +375,56 @@ async function requestAssistant() {
     setStreaming(false);
     state.controller = null;
   }
+}
+
+function appendAssistantActions(wrap, text) {
+  const actions = document.createElement("div");
+  actions.className = "msg-actions msg-actions-hover";
+
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "msg-action";
+  copyBtn.textContent = "⧉ copy";
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      copyBtn.textContent = "copied";
+      copyBtn.classList.add("copied");
+      setTimeout(() => {
+        copyBtn.textContent = "⧉ copy";
+        copyBtn.classList.remove("copied");
+      }, 1200);
+    } catch {
+      copyBtn.textContent = "!";
+    }
+  });
+
+  const regenBtn = document.createElement("button");
+  regenBtn.type = "button";
+  regenBtn.className = "msg-action";
+  regenBtn.textContent = "↻ regenerate";
+  regenBtn.addEventListener("click", () => {
+    if (state.streaming) return;
+    // Pop the last assistant from state (matches this bubble) and re-request.
+    const lastAssistantIdx = findLastAssistantIndex();
+    if (lastAssistantIdx >= 0) {
+      state.conversation.splice(lastAssistantIdx, 1);
+      saveConversation();
+    }
+    wrap.remove();
+    void requestAssistant();
+  });
+
+  actions.appendChild(copyBtn);
+  actions.appendChild(regenBtn);
+  wrap.appendChild(actions);
+}
+
+function findLastAssistantIndex() {
+  for (let i = state.conversation.length - 1; i >= 0; i--) {
+    if (state.conversation[i].role === "assistant") return i;
+  }
+  return -1;
 }
 
 function appendErrorActions(wrap, triedProviders) {
