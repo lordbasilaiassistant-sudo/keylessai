@@ -325,6 +325,7 @@ async function handleModels(req, res) {
 
 async function handleHealth(req, res) {
   const { slotGate, breaker } = await import("../core/router.js");
+  const server = req.socket?.server;
   sendJson(res, 200, {
     status: "ok",
     providers: Object.keys(PROVIDERS),
@@ -333,6 +334,7 @@ async function handleHealth(req, res) {
     queue: slotGate
       ? { depth: slotGate.depth, estimatedWaitMs: slotGate.estimatedWaitMs }
       : null,
+    active: server && typeof server.active === "number" ? server.active : null,
     cache: defaultCache.stats(),
     circuit: breaker ? breaker.stats() : null,
   });
@@ -374,11 +376,33 @@ function getBaseUrl(req) {
 }
 
 export function createProxy({ log = console.log } = {}) {
-  return createServer(async (req, res) => {
+  // Track active requests so shutdown can wait for them to drain.
+  let active = 0;
+  const bump = () => {
+    active++;
+  };
+  const drop = () => {
+    active--;
+    if (server._drainResolve && active === 0) {
+      server._drainResolve();
+    }
+  };
+
+  const server = createServer(async (req, res) => {
     if (req.method === "OPTIONS") {
       res.writeHead(204, corsHeaders());
       return res.end();
     }
+
+    bump();
+    let _dropped = false;
+    const dropOnce = () => {
+      if (_dropped) return;
+      _dropped = true;
+      drop();
+    };
+    res.on("finish", dropOnce);
+    res.on("close", dropOnce);
 
     const url = new URL(req.url, "http://localhost");
     const path = url.pathname.replace(/\/+$/, "") || "/";
@@ -412,4 +436,31 @@ export function createProxy({ log = console.log } = {}) {
       }
     }
   });
+
+  /**
+   * Graceful drain: stop accepting new connections, wait for in-flight
+   * requests to finish, then resolve. Returns immediately if idle.
+   *
+   * @param {number} [graceMs=30000] Max time to wait before giving up.
+   * @returns {Promise<{drained: boolean, remaining: number}>}
+   */
+  server.drain = function drain(graceMs = 30_000) {
+    server.close(); // stops accepting new connections (keeps existing alive)
+    if (active === 0) {
+      return Promise.resolve({ drained: true, remaining: 0 });
+    }
+    return new Promise((resolve) => {
+      server._drainResolve = () => resolve({ drained: true, remaining: 0 });
+      const t = setTimeout(() => {
+        server._drainResolve = null;
+        resolve({ drained: false, remaining: active });
+      }, graceMs);
+      if (typeof t.unref === "function") t.unref();
+    });
+  };
+
+  /** Current in-flight request count (observability). */
+  Object.defineProperty(server, "active", { get: () => active });
+
+  return server;
 }
