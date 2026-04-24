@@ -8,55 +8,54 @@ const body = document.getElementById("drawerBody");
 const ENDPOINTS = [
   {
     method: "post",
-    url: "http://127.0.0.1:8787/v1/chat/completions",
-    title: "KeylessAI local proxy — the unified endpoint",
+    url: "https://text.pollinations.ai/openai",
+    title: "Direct swap — zero install, zero compute, one env var",
     desc:
-      "Run <code>npx github:lordbasilaiassistant-sudo/keylessai serve</code> in a terminal. You now have a local OpenAI-compatible endpoint with model-name aliasing (gpt-4o, gpt-4o-mini, claude-3-5-sonnet-latest etc. all work), provider failover, and CORS. Point any OpenAI client at <code>http://127.0.0.1:8787/v1</code>.",
+      "This is the primary path. Nothing runs on your machine. You change one environment variable and your existing OpenAI code works. Pass <code>openai-fast</code> as the model (or <code>openai</code>, its alias).",
     tabs: [
       {
-        name: "one-liner",
-        code: `# 1. Start the proxy (zero install, zero deps beyond Node 18+).
-npx github:lordbasilaiassistant-sudo/keylessai serve
-
-# 2. In your app:
-export OPENAI_API_BASE="http://127.0.0.1:8787/v1"
-export OPENAI_BASE_URL="http://127.0.0.1:8787/v1"
+        name: "env (bash)",
+        code: `# Works with ANY tool that reads these env vars.
+export OPENAI_API_BASE="https://text.pollinations.ai"
+export OPENAI_BASE_URL="https://text.pollinations.ai"
 export OPENAI_API_KEY="not-needed"
+export OPENAI_MODEL="openai-fast"
 
-# 3. Run your existing OpenAI code unchanged.
-# Model names like gpt-4o, gpt-4o-mini, claude-3-5-sonnet-latest are aliased.`,
+# That's the whole setup. No install, no daemon, no signup.`,
       },
       {
         name: "aider",
-        code: `# In terminal 1:
-npx github:lordbasilaiassistant-sudo/keylessai serve
-
-# In terminal 2:
-export OPENAI_API_BASE="http://127.0.0.1:8787/v1"
+        code: `# pip install aider-chat
+export OPENAI_API_BASE="https://text.pollinations.ai"
 export OPENAI_API_KEY="not-needed"
 
-aider --model gpt-4o     # the proxy aliases gpt-4o → openai-fast`,
+aider --model openai/openai-fast
+
+# Or one-off:
+aider --openai-api-base https://text.pollinations.ai \\
+      --openai-api-key  not-needed \\
+      --model openai/openai-fast`,
       },
       {
         name: "cline / roo",
-        code: `// VS Code settings.json — after starting the proxy:
+        code: `// VS Code settings.json
 {
   "cline.apiProvider": "openai",
-  "cline.openAiBaseUrl": "http://127.0.0.1:8787/v1",
+  "cline.openAiBaseUrl": "https://text.pollinations.ai",
   "cline.openAiApiKey": "not-needed",
   "cline.openAiModelId": "openai-fast"
 }
 
-// Roo uses same keys with roo-cline. prefix.`,
+// Roo Code uses "roo-cline." prefix with the same keys.`,
       },
       {
         name: "continue",
         code: `// ~/.continue/config.json
 {
   "models": [{
-    "title": "KeylessAI (local proxy)",
+    "title": "KeylessAI (gpt-oss-20b)",
     "provider": "openai",
-    "apiBase": "http://127.0.0.1:8787/v1",
+    "apiBase": "https://text.pollinations.ai",
     "apiKey": "not-needed",
     "model": "openai-fast"
   }]
@@ -64,33 +63,11 @@ aider --model gpt-4o     # the proxy aliases gpt-4o → openai-fast`,
       },
       {
         name: "codex",
-        code: `# OpenAI's Codex CLI — reads OPENAI_BASE_URL
-export OPENAI_BASE_URL="http://127.0.0.1:8787/v1"
+        code: `# OpenAI's Codex CLI
+export OPENAI_BASE_URL="https://text.pollinations.ai"
 export OPENAI_API_KEY="not-needed"
 
-codex`,
-      },
-      {
-        name: "claude code",
-        code: `# Claude Code speaks Anthropic format, not OpenAI.
-# Bridge via LiteLLM proxy in front of KeylessAI:
-
-pip install 'litellm[proxy]'
-
-cat > litellm.yaml <<EOF
-model_list:
-  - model_name: claude-3-5-sonnet-20241022
-    litellm_params:
-      model: openai/openai-fast
-      api_base: http://127.0.0.1:8787/v1
-      api_key: not-needed
-EOF
-
-litellm --config litellm.yaml --port 4000 &
-
-export ANTHROPIC_BASE_URL="http://127.0.0.1:4000"
-export ANTHROPIC_API_KEY="not-needed"
-claude    # now running on KeylessAI, free`,
+codex --model openai-fast`,
       },
       {
         name: "openai sdk",
@@ -98,12 +75,12 @@ claude    # now running on KeylessAI, free`,
 import OpenAI from "openai";
 
 const client = new OpenAI({
-  baseURL: "http://127.0.0.1:8787/v1",
+  baseURL: "https://text.pollinations.ai",
   apiKey: "not-needed",
 });
 
 const stream = await client.chat.completions.create({
-  model: "gpt-4o-mini",  // aliased
+  model: "openai-fast",
   messages: [{ role: "user", content: "hello" }],
   stream: true,
 });
@@ -113,29 +90,38 @@ for await (const chunk of stream) {
 }`,
       },
       {
+        name: "python sdk",
+        code: `# Python — unchanged OpenAI SDK:
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://text.pollinations.ai",
+    api_key="not-needed",
+)
+
+stream = client.chat.completions.create(
+    model="openai-fast",
+    messages=[{"role": "user", "content": "hello"}],
+    stream=True,
+)
+
+for chunk in stream:
+    print(chunk.choices[0].delta.content or "", end="", flush=True)`,
+      },
+      {
         name: "langchain",
         code: `# Python — LangChain
 from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(
-    base_url="http://127.0.0.1:8787/v1",
+    base_url="https://text.pollinations.ai",
     api_key="not-needed",
-    model="gpt-4o",  # aliased
+    model="openai-fast",
     streaming=True,
 )
-
 for chunk in llm.stream("Explain autonomous agents in 2 sentences."):
     print(chunk.content, end="", flush=True)`,
       },
-    ],
-  },
-  {
-    method: "post",
-    url: "https://text.pollinations.ai/openai",
-    title: "No-install path — point directly at Pollinations",
-    desc:
-      "For CI jobs, serverless environments, or any context where you can't run a local proxy, skip KeylessAI entirely and hit Pollinations directly. You lose model aliasing and failover, gain full portability.",
-    tabs: [
       {
         name: "curl",
         code: `curl -N https://text.pollinations.ai/openai \\
@@ -146,44 +132,14 @@ for chunk in llm.stream("Explain autonomous agents in 2 sentences."):
     "stream": true
   }'`,
       },
-      {
-        name: "python",
-        code: `from openai import OpenAI
-
-client = OpenAI(
-    base_url="https://text.pollinations.ai",
-    api_key="not-needed",
-)
-
-res = client.chat.completions.create(
-    model="openai-fast",
-    messages=[{"role": "user", "content": "hello"}],
-)
-print(res.choices[0].message.content)`,
-      },
-      {
-        name: "node",
-        code: `import OpenAI from "openai";
-
-const client = new OpenAI({
-  baseURL: "https://text.pollinations.ai",
-  apiKey: "not-needed",
-});
-
-const res = await client.chat.completions.create({
-  model: "openai-fast",
-  messages: [{ role: "user", content: "hello" }],
-});
-console.log(res.choices[0].message.content);`,
-      },
     ],
   },
   {
     method: "get",
     url: "https://text.pollinations.ai/{prompt}?model=openai-fast",
-    title: "Pollinations simple GET — shell one-liner",
+    title: "Simple GET — shell one-liner",
     desc:
-      "URL-encode your prompt into the path, get plain text back. Perfect for shell scripts and systems that only speak HTTP GET.",
+      "URL-encode your prompt, get plain text back. Ideal for scripts, cron jobs, anywhere only HTTP GET is available.",
     tabs: [
       {
         name: "curl",
@@ -197,34 +153,60 @@ const res = await fetch(
 );
 console.log(await res.text());`,
       },
+      {
+        name: "python",
+        code: `import urllib.parse, requests
+prompt = "write a haiku about JSON"
+url = f"https://text.pollinations.ai/{urllib.parse.quote(prompt)}?model=openai-fast"
+print(requests.get(url).text)`,
+      },
+    ],
+  },
+  {
+    method: "post",
+    url: "claude code bridge (anthropic format)",
+    title: "Claude Code — bridge via LiteLLM",
+    desc:
+      "Claude Code speaks Anthropic's Messages API. LiteLLM proxy translates Anthropic &harr; OpenAI so Claude Code can talk to Pollinations. Runs as a local Python process that you launch when you want it.",
+    tabs: [
+      {
+        name: "setup",
+        code: `pip install 'litellm[proxy]'
+
+cat > litellm.yaml <<EOF
+model_list:
+  - model_name: claude-3-5-sonnet-20241022
+    litellm_params:
+      model: openai/openai-fast
+      api_base: https://text.pollinations.ai
+      api_key: not-needed
+EOF
+
+litellm --config litellm.yaml --port 4000 &
+
+export ANTHROPIC_BASE_URL="http://127.0.0.1:4000"
+export ANTHROPIC_API_KEY="not-needed"
+claude   # now on KeylessAI, free.`,
+      },
     ],
   },
   {
     method: "npm",
-    url: "@mlc-ai/web-llm",
-    title: "WebLLM — in-browser WebGPU inference",
+    url: "npx github:lordbasilaiassistant-sudo/keylessai serve",
+    title: "Optional: local proxy (for model-name aliasing)",
     desc:
-      "Run open models (Llama-3.2, Qwen2.5, Phi-3.5, SmolLM2) entirely in the browser via WebGPU. First download is 1-4 GB; after that, inference costs zero network. Fully offline, fully private. This is what the chat above uses when you pick the <code>webllm</code> provider.",
+      "Only use this if your tool hardcodes model names like <code>gpt-4o</code> or <code>claude-3-5-sonnet-latest</code> and you can't change them. The proxy accepts any OpenAI model name and transparently routes it to <code>openai-fast</code>. Runs as a tiny local Node process &mdash; no inference, just HTTP forwarding.",
     tabs: [
       {
-        name: "browser",
-        code: `<script type="module">
-import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
+        name: "run",
+        code: `# Starts on 127.0.0.1:8787. No install beyond Node 18+.
+npx github:lordbasilaiassistant-sudo/keylessai serve
 
-const engine = await CreateMLCEngine(
-  "Llama-3.2-1B-Instruct-q4f32_1-MLC",
-  { initProgressCallback: p => console.log(p.text) }
-);
-
-const stream = await engine.chat.completions.create({
-  messages: [{ role: "user", content: "hello" }],
-  stream: true,
-});
-
-for await (const chunk of stream) {
-  document.body.textContent += chunk.choices[0]?.delta?.content ?? "";
-}
-<\/script>`,
+# Then:
+export OPENAI_API_BASE="http://127.0.0.1:8787/v1"
+export OPENAI_API_KEY="not-needed"
+# Now your tool can use "gpt-4o", "claude-3-5-sonnet-latest", etc. —
+# the proxy transparently maps them to openai-fast.`,
       },
     ],
   },
@@ -311,10 +293,10 @@ function renderDrawer() {
   const lede = document.createElement("div");
   lede.className = "api-lede";
   lede.innerHTML = `
-    Run <code>npx github:lordbasilaiassistant-sudo/keylessai serve</code> &mdash; you now have a
-    <strong>unified OpenAI-compatible endpoint on your machine</strong>. Any existing OpenAI SDK, Aider, Cline, Continue,
-    Codex, LangChain, or custom harness can point at it with zero code changes. Model names like
-    <code>gpt-4o</code> and <code>claude-3-5-sonnet-latest</code> are aliased transparently.
+    <strong>The whole point: zero setup, zero compute, zero cost.</strong><br/>
+    Set <code>OPENAI_API_BASE=https://text.pollinations.ai</code> and pass any non-empty string as the API key.
+    Every OpenAI-compatible tool &mdash; Aider, Cline, Continue, Codex, LangChain, the official OpenAI SDK &mdash; just works.
+    Model: <code>openai-fast</code>.
   `;
   body.appendChild(lede);
 
