@@ -85,10 +85,28 @@ async function cmdServe(args) {
     process.exit(1);
   });
 
-  const shutdown = () => {
-    console.log("\n  shutting down…");
-    server.close(() => process.exit(0));
-    setTimeout(() => process.exit(0), 1000).unref();
+  let shuttingDown = false;
+  const shutdown = async () => {
+    if (shuttingDown) {
+      console.log("\n  force-exiting (second signal)");
+      process.exit(1);
+    }
+    shuttingDown = true;
+    const inflight = server.active;
+    if (inflight === 0) {
+      console.log("\n  shutting down (idle)…");
+      server.close(() => process.exit(0));
+      setTimeout(() => process.exit(0), 500).unref();
+      return;
+    }
+    console.log(`\n  draining ${inflight} in-flight request(s) — press Ctrl+C again to force exit`);
+    const { drained, remaining } = await server.drain(30_000);
+    if (drained) {
+      console.log("  drained cleanly.");
+    } else {
+      console.log(`  grace period elapsed; ${remaining} request(s) still in flight, exiting anyway.`);
+    }
+    process.exit(0);
   };
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
