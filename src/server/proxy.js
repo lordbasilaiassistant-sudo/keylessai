@@ -57,6 +57,28 @@ function safeLog(s) {
     .slice(0, MAX_LOG_FIELD);
 }
 
+/** Sanitize an error message before returning it to a client.
+ * Strips absolute file paths (leaks local filesystem), caps length,
+ * and scrubs control characters. Internal errors become a generic
+ * message — client doesn't need to know our implementation details. */
+const MAX_CLIENT_ERROR_MSG = 300;
+const INTERNAL_ERROR_PATTERNS = [
+  /\b[a-zA-Z]:[\\/][^\s]+/g,       // Windows absolute paths (C:\...)
+  /\/(usr|home|root|Users)\/[^\s]+/g, // Unix absolute paths
+  /at .+\(.+:\d+:\d+\)/g,           // V8 stack trace frames
+  /at .+:\d+:\d+/g,                 // Simpler stack frames
+];
+function safeErrorMessage(msg, fallback = "internal error") {
+  const raw = String(msg || fallback);
+  let sanitized = raw;
+  for (const re of INTERNAL_ERROR_PATTERNS) {
+    sanitized = sanitized.replace(re, "[redacted]");
+  }
+  return sanitized
+    .replace(/[\x00-\x1F\x7F]/g, " ")
+    .slice(0, MAX_CLIENT_ERROR_MSG);
+}
+
 async function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -101,7 +123,7 @@ async function handleChatCompletions(req, res, log) {
   } catch (e) {
     const status = e.httpStatus || 400;
     const type = e.httpType || "invalid_request_error";
-    return sendError(res, status, e.message, type);
+    return sendError(res, status, safeErrorMessage(e.message, "bad request"), type);
   }
   return handleChatCompletionsWithBody(req, res, body, log);
 }
@@ -213,7 +235,7 @@ async function handleChatCompletionsWithBody(req, res, body, log) {
     } catch (e) {
       if (!res.writableEnded) {
         writeSse({
-          error: { message: e.message || String(e), type: "keylessai_upstream_error" },
+          error: { message: safeErrorMessage(e.message, "upstream failure"), type: "keylessai_upstream_error" },
         });
         res.write("data: [DONE]\n\n");
         res.end();
@@ -255,7 +277,7 @@ async function handleChatCompletionsWithBody(req, res, body, log) {
       if (chunk.type === "content") assembled += chunk.text;
     }
   } catch (e) {
-    return sendError(res, 502, e.message || "upstream failure", "keylessai_upstream_error");
+    return sendError(res, 502, safeErrorMessage(e.message, "upstream failure"), "keylessai_upstream_error");
   }
 
   if (assembled) defaultCache.put(cacheKey, assembled);
@@ -292,7 +314,7 @@ async function handleLegacyCompletions(req, res, log) {
   } catch (e) {
     const status = e.httpStatus || 400;
     const type = e.httpType || "invalid_request_error";
-    return sendError(res, status, e.message, type);
+    return sendError(res, status, safeErrorMessage(e.message, "bad request"), type);
   }
   // Rewrite `prompt` to chat-style `messages` and reuse the full pipeline:
   // caching, streaming, notice-detection, queue, provider failover.
@@ -306,7 +328,7 @@ async function handleLegacyCompletions(req, res, log) {
   try {
     validateChatBody(rewritten);
   } catch (e) {
-    return sendError(res, e.httpStatus || 400, e.message, e.httpType || "invalid_request_error");
+    return sendError(res, e.httpStatus || 400, safeErrorMessage(e.message, "bad request"), e.httpType || "invalid_request_error");
   }
   return handleChatCompletionsWithBody(req, res, rewritten, log);
 }
@@ -474,7 +496,8 @@ export function createProxy({ log = console.log } = {}) {
     } catch (e) {
       log(`error handling ${safeLog(req.method)} ${safeLog(req.url)}: ${safeLog(e.message)}`);
       if (!res.headersSent) {
-        sendError(res, 500, e.message || "internal error");
+        // Client sees generic message; full error already logged server-side.
+        sendError(res, 500, "internal error");
       } else if (!res.writableEnded) {
         res.end();
       }
