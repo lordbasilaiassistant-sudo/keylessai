@@ -12,8 +12,8 @@ compatibility_flags = ["nodejs_compat"]
 #   npx wrangler login    (one-time)
 #   cd worker && npx wrangler deploy
 #
-# Your public URL will be https://keylessai.<your-subdomain>.workers.dev
-# unless you bind a custom domain.
+# Wrangler will print your public URL after deploy — it'll be under
+# <name>.<your-cf-subdomain>.workers.dev unless you bind a custom domain.
 
 # Observability is off by default (it's free but opt-in). Flip this on
 # once you care about traffic patterns:
