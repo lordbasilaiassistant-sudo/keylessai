@@ -11,8 +11,10 @@ import * as airforce from "../../providers/airforce.js";
 import { defaultSlotGate } from "./queue.js";
 import { looksLikeNotice } from "./notices.js";
 import { defaultBreaker } from "./circuit.js";
+import { defaultMetrics } from "./metrics.js";
 
 export const breaker = defaultBreaker;
+export const metrics = defaultMetrics;
 
 /** Registry of all installed providers, keyed by their `id`. */
 export const PROVIDERS = {
@@ -185,6 +187,8 @@ export async function* streamChat({
         lastErr = new Error(`${id}: circuit open`);
         continue;
       }
+      const startedAt = Date.now();
+      let ttfbMs = null;
       try {
         if (onProviderChange) onProviderChange(id);
         if (onStatus) onStatus(`via ${p.label}…`);
@@ -197,17 +201,23 @@ export async function* streamChat({
           onStatus,
           failFast: true,
         })) {
+          if (!emitted && chunk.type === "content") {
+            ttfbMs = Date.now() - startedAt;
+          }
           emitted = true;
           yield chunk;
         }
         if (emitted) {
           breaker.succeed(id);
+          if (ttfbMs !== null) metrics.recordSuccess(id, ttfbMs);
           return;
         }
         breaker.fail(id);
+        metrics.recordFailure(id);
       } catch (e) {
         lastErr = e;
         breaker.fail(id);
+        metrics.recordFailure(id);
         if (onStatus) onStatus(`${p.label} failed: ${e.message}. next provider…`);
       }
     }
