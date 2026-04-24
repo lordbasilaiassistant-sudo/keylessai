@@ -1,0 +1,84 @@
+name: Sync providers catalog
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync providers/_catalog.json from g4f-working
+        env:
+          UPSTREAM_URL: https://raw.githubusercontent.com/Free-AI-Things/g4f-working/main/working/working_results.txt
+        run: |
+          set -euo pipefail
+          mkdir -p providers
+          curl -sSfL "$UPSTREAM_URL" -o /tmp/working_results.txt
+          NOW_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          NOW="$NOW_UTC" SRC="$UPSTREAM_URL" node -e '
+            const fs = require("fs");
+            const lines = fs.readFileSync("/tmp/working_results.txt", "utf8")
+              .split(/\r?\n/).filter(Boolean);
+            const providers = {};
+            for (const line of lines) {
+              const parts = line.split("|");
+              if (parts.length < 3) continue;
+              const [prov, model, type] = parts.map(s => s.trim());
+              if (type !== "text") continue;
+              if (!providers[prov]) providers[prov] = [];
+              if (!providers[prov].includes(model)) providers[prov].push(model);
+            }
+            for (const k of Object.keys(providers)) providers[k].sort();
+            const sorted = {};
+            for (const k of Object.keys(providers).sort()) sorted[k] = providers[k];
+            const out = {
+              last_updated: process.env.NOW,
+              source: process.env.SRC,
+              providers: sorted
+            };
+            fs.writeFileSync("providers/_catalog.json", JSON.stringify(out, null, 2) + "\n");
+          '
+
+      - name: Commit if catalog changed (ignoring last_updated)
+        run: |
+          set -euo pipefail
+          if [ ! -f providers/_catalog.json ]; then
+            echo "catalog missing, nothing to do"
+            exit 0
+          fi
+
+          # Capture HEAD version (if any) for diffing, ignoring last_updated.
+          if ! git show HEAD:providers/_catalog.json > /tmp/old_catalog.json 2>/dev/null; then
+            : > /tmp/old_catalog.json
+          fi
+
+          CHANGED="$(NEW=providers/_catalog.json OLD=/tmp/old_catalog.json node -e '
+            const fs = require("fs");
+            const norm = p => {
+              try {
+                const j = JSON.parse(fs.readFileSync(p, "utf8"));
+                delete j.last_updated;
+                return JSON.stringify(j);
+              } catch { return ""; }
+            };
+            process.stdout.write(norm(process.env.NEW) === norm(process.env.OLD) ? "0" : "1");
+          ')"
+
+          if [ "$CHANGED" = "0" ]; then
+            echo "No meaningful change in catalog; skipping commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add providers/_catalog.json
+          git commit -m "chore: sync providers/_catalog.json from g4f-working [skip ci]"
+          git push
