@@ -1,0 +1,13 @@
+{
+  "name": "keylessai-dogfood",
+  "version": "0.0.0",
+  "private": true,
+  "description": "End-to-end dogfood tests. Not published. Not part of the runtime.",
+  "type": "module",
+  "scripts": {
+    "test": "bash ../dogfood/run-all.sh"
+  },
+  "dependencies": {
+    "openai": "^6.9.1"
+  }
+}

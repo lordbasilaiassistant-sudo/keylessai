@@ -12,4 +12,4 @@ node_modules/
 !.vscode/settings.json
 !.vscode/extensions.json
 dogfood/node_modules/
-dogfood/package*.json
+dogfood/package-lock.json
