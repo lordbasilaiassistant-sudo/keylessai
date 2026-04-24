@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { SlotGate } from "../src/queue.js";
+import { SlotGate } from "../src/core/queue.js";
 
 test("second caller waits for first to release", async () => {
   const gate = new SlotGate();

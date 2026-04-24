@@ -1,5 +1,5 @@
-import { streamChat, listAllModels, PROVIDERS } from "./router.js";
-import { renderMarkdownHtml, attachCodeCopyHandlers } from "./src/markdown.js";
+import { streamChat, listAllModels, PROVIDERS } from "./src/core/router.js";
+import { renderMarkdownHtml, attachCodeCopyHandlers } from "./src/ui/markdown.js";
 
 const $ = (id) => document.getElementById(id);
 const messagesEl = $("messages");

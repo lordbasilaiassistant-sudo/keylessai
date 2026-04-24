@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { PromptCache } from "../src/cache.js";
+import { PromptCache } from "../src/core/cache.js";
 
 test("hit returns stored value", () => {
   const c = new PromptCache();

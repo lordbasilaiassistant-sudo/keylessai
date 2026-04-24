@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
-import { streamChat, listAllModels, PROVIDERS } from "../router.js";
-import { defaultCache } from "./cache.js";
+import { streamChat, listAllModels, PROVIDERS } from "../core/router.js";
+import { defaultCache } from "../core/cache.js";
 
 const MODEL_ALIASES = {
   "gpt-3.5-turbo": "openai-fast",
@@ -262,7 +262,7 @@ async function handleModels(req, res) {
 }
 
 async function handleHealth(req, res) {
-  const { slotGate } = await import("../router.js");
+  const { slotGate } = await import("../core/router.js");
   sendJson(res, 200, {
     status: "ok",
     providers: Object.keys(PROVIDERS),

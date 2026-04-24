@@ -175,7 +175,7 @@ export async function* streamChat({ model, messages, signal, onStatus }) {
 }
 ```
 
-Then add it to `router.js` in the `PROVIDERS` map and the `FAILOVER_ORDER` array. No build step, no bundler.
+Then add it to `src/core/router.js` in the `PROVIDERS` map and the `FAILOVER_ORDER` array. No build step, no bundler.
 
 **Criteria for acceptance:** The provider endpoint must be callable from a browser origin (`Access-Control-Allow-Origin: *` or accessible via a public CORS relay) and require zero authentication. If it requires a key, token, cookie, or signup, it does not belong here.
 
@@ -186,14 +186,32 @@ Then add it to `router.js` in the `PROVIDERS` map and the `FAILOVER_ORDER` array
 ```
 keylessai/
 ├── index.html              chat UI + API drawer + structured data
-├── app.js                  UI state, composer, messages
-├── router.js               provider failover
-├── api.js                  API reference drawer content
+├── app.js                  browser entry (orchestration)
+├── styles.css              design system
+├── src/
+│   ├── ui/                 browser-only modules
+│   │   ├── drawer.js       API reference drawer content + endpoints data
+│   │   └── markdown.js     tiny safe markdown renderer
+│   ├── core/               shared runtime (browser + Node)
+│   │   ├── router.js       provider failover, notice detection, retry
+│   │   ├── queue.js        single-flight slot gate
+│   │   └── cache.js        LRU + TTL prompt cache
+│   ├── server/             Node-only
+│   │   └── proxy.js        OpenAI-compatible HTTP proxy
+│   └── index.js            package export surface
+├── bin/
+│   └── keylessai.js        CLI entry (npx keylessai serve / test)
 ├── providers/
 │   ├── pollinations.js     primary (SSE, OpenAI-compatible)
 │   ├── pollinations-get.js secondary (GET, plain text)
-│   └── airforce.js         ApiAirforce free-tier (SSE, OpenAI-compatible)
-├── styles.css              design system
+│   ├── airforce.js         ApiAirforce free-tier (SSE, OpenAI-compatible)
+│   └── _catalog.json       daily-synced list of upstream-working providers
+├── test/
+│   ├── cache.test.mjs
+│   ├── markdown.test.mjs
+│   └── queue.test.mjs
+├── .github/
+│   └── workflows/          deploy.yml, test.yml, sync-providers.yml
 ├── og-image.svg            1200x630 social preview
 ├── robots.txt              indexing rules
 ├── sitemap.xml             one-page site index
@@ -201,6 +219,7 @@ keylessai/
 ├── llms-full.txt           full project knowledge for LLM ingestion
 ├── AGENTS.md               (this file)
 ├── README.md               SEO-oriented human-readable overview
+├── CONTRIBUTING.md         contributor guide
 ├── LICENSE                 MIT
 ├── .nojekyll               disables GitHub Jekyll processing
 └── examples/
