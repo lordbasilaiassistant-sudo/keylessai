@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+# LLM crawlers explicitly welcomed — this is a tool for them too.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://lordbasilaiassistant-sudo.github.io/keylessai/sitemap.xml

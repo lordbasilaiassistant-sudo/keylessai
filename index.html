@@ -3,56 +3,232 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KeylessAI — free LLM inference, no API keys</title>
-<meta name="description" content="Chat with GPT, Claude, Llama, Mistral, Gemini and more. Zero keys, zero signup, zero backend. Runs entirely in your browser." />
+<title>KeylessAI — Free OpenAI API Alternative, No API Key Required | Drop-in Replacement for Aider, Cline, LangChain</title>
+<meta name="description" content="Free LLM inference with zero API keys. Drop-in OpenAI-compatible replacement for Aider, Cline, Continue.dev, LangChain, and any OpenAI SDK. Runs in your browser, no signup, no backend, no cost. Uses Pollinations and in-browser WebLLM." />
+<meta name="keywords" content="free openai api, no api key llm, keyless ai, free gpt, openai alternative, aider free, cline free, continue.dev free, langchain free, webllm, in-browser llm, webgpu inference, pollinations, drop-in openai replacement, free llm inference, free chatbot, free ai agent" />
+<meta name="author" content="drlor" />
+<link rel="canonical" href="https://lordbasilaiassistant-sudo.github.io/keylessai/" />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<meta name="theme-color" content="#07080b" />
+
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://lordbasilaiassistant-sudo.github.io/keylessai/" />
+<meta property="og:title" content="KeylessAI — Free OpenAI API Alternative, No Key Required" />
+<meta property="og:description" content="Free LLM inference. Zero API keys. Drop-in OpenAI-compatible endpoint that works with Aider, Cline, Continue, LangChain, and any existing OpenAI SDK. Plus in-browser WebLLM for fully offline inference." />
+<meta property="og:image" content="https://lordbasilaiassistant-sudo.github.io/keylessai/og-image.svg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:site_name" content="KeylessAI" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="KeylessAI — Free OpenAI API Alternative, No Key Required" />
+<meta name="twitter:description" content="Free LLM inference. Drop-in OpenAI replacement for Aider, Cline, Continue, LangChain. No keys, no signup, no backend." />
+<meta name="twitter:image" content="https://lordbasilaiassistant-sudo.github.io/keylessai/og-image.svg" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "KeylessAI",
+  "alternateName": "Keyless AI",
+  "url": "https://lordbasilaiassistant-sudo.github.io/keylessai/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any (browser)",
+  "description": "Free LLM inference with zero API keys. Drop-in OpenAI-compatible replacement that works with Aider, Cline, Continue.dev, LangChain, and any OpenAI SDK. Runs in the browser, no backend, no signup.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "drlor" },
+  "license": "https://opensource.org/licenses/MIT",
+  "softwareRequirements": "Modern browser with WebGPU (for in-browser mode)",
+  "featureList": [
+    "OpenAI-compatible chat completions endpoint",
+    "Streaming SSE responses",
+    "Works with Aider, Cline, Continue.dev, LangChain, OpenAI SDK",
+    "In-browser WebLLM via WebGPU (Llama, Qwen, Phi, SmolLM)",
+    "Automatic provider failover",
+    "Zero API keys required"
+  ]
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "KeylessAI",
+  "url": "https://lordbasilaiassistant-sudo.github.io/keylessai/",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://text.pollinations.ai/{search_term_string}?model=openai-fast",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is KeylessAI?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "KeylessAI is a drop-in OpenAI-compatible LLM endpoint that requires no API key, no signup, and no backend. Point any OpenAI client at https://text.pollinations.ai with any non-empty string as the API key, and existing OpenAI code works unchanged."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I use KeylessAI with Aider?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Set environment variables: OPENAI_API_BASE=https://text.pollinations.ai, OPENAI_API_KEY=not-needed. Then run: aider --model openai/openai-fast"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I use KeylessAI with Cline, Roo Code, or Continue.dev?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "All three accept a custom OpenAI base URL. In VS Code settings, set the provider to openai, baseUrl to https://text.pollinations.ai, apiKey to not-needed, and model to openai-fast."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I use KeylessAI with LangChain?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Use langchain_openai.ChatOpenAI with base_url set to https://text.pollinations.ai and api_key set to any non-empty string. Model: openai-fast."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does KeylessAI work with Claude Code?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Not directly — Claude Code speaks Anthropic's Messages API, not OpenAI chat-completions. Bridge through LiteLLM proxy: install litellm[proxy], configure a model_list that maps Anthropic model names to openai/openai-fast at api_base https://text.pollinations.ai, run litellm --config config.yaml --port 4000, then set ANTHROPIC_BASE_URL=http://localhost:4000. See examples/claude-code-bridge.md in the repo."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What model does KeylessAI provide?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The anonymous tier provides openai-fast, which is GPT-OSS 20B served by Pollinations.ai. It supports tool calling and emits reasoning tokens. Good for prototyping, boilerplate, classification, and small agent loops — not a replacement for GPT-4 or Claude 3.5 on hard reasoning."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is KeylessAI really free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. There are no API keys, no signup, no credit card, no email required. The project is MIT-licensed and hosted on GitHub Pages. Inference is served by Pollinations (sponsor-funded free public API) or by WebLLM running in your own browser."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can KeylessAI run fully offline?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Select the webllm provider — models (Llama-3.2, Qwen2.5, Phi-3.5, SmolLM2) download once to your browser and then run entirely on your local GPU via WebGPU. No network dependency after the initial download."
+      }
+    }
+  ]
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to use KeylessAI as a drop-in OpenAI replacement",
+  "description": "Replace your OpenAI API endpoint with a free, keyless alternative in 30 seconds.",
+  "totalTime": "PT30S",
+  "step": [
+    {
+      "@type": "HowToStep",
+      "name": "Set the base URL",
+      "text": "Set OPENAI_API_BASE and OPENAI_BASE_URL environment variables to https://text.pollinations.ai"
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Set a dummy API key",
+      "text": "Set OPENAI_API_KEY to any non-empty string (for example 'not-needed'). No real key is required."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Choose the model",
+      "text": "Set OPENAI_MODEL to 'openai-fast' (GPT-OSS 20B). This is the model available at the anonymous tier."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Run your existing OpenAI code",
+      "text": "No code changes. Any tool that reads OPENAI_API_BASE + OPENAI_API_KEY now routes to KeylessAI."
+    }
+  ]
+}
+</script>
+
 <link rel="stylesheet" href="./styles.css" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%97%9D%3C/text%3E%3C/svg%3E" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23a8ffda'/%3E%3Cpath d='M12 8v7h-4v2h4v7h2v-7h4v-2h-4V8z' fill='%2307080b'/%3E%3Ccircle cx='22' cy='16' r='3' fill='%2307080b'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://text.pollinations.ai" />
 </head>
 <body>
 <header class="topbar">
   <div class="brand">
-    <span class="logo">&#x1F5DD;</span>
-    <span class="title">Keyless</span>
-    <span class="tag">free LLM inference &middot; no keys &middot; no signup</span>
+    <div class="mark" aria-hidden="true"></div>
+    <div class="brand-text">
+      <div class="brand-title">Keyless<em>AI</em></div>
+      <div class="brand-sub">no keys &middot; no signup &middot; no backend</div>
+    </div>
   </div>
   <div class="controls">
     <label class="field">
       <span>Provider</span>
-      <select id="providerSelect">
+      <select id="providerSelect" aria-label="Provider">
         <option value="auto">auto (failover)</option>
         <option value="pollinations">pollinations</option>
-        <option value="duckduckgo">duckduckgo</option>
+        <option value="pollinations-get">pollinations (get)</option>
         <option value="webllm">webllm (in-browser)</option>
       </select>
     </label>
     <label class="field">
       <span>Model</span>
-      <select id="modelSelect"></select>
+      <select id="modelSelect" aria-label="Model"></select>
     </label>
+    <button id="apiBtn" class="btn ghost" title="View public API endpoints">&lt;/&gt; API</button>
     <button id="newChatBtn" class="btn ghost" title="New chat">new</button>
   </div>
 </header>
 
 <main class="chat">
-  <div id="thanks" class="thanks" hidden>Thanks for supporting KeylessAI &mdash; this literally keeps the lights on. &lt;3</div>
+  <div id="thanks" class="thanks" hidden>Thanks for supporting KeylessAI &mdash; this literally keeps the lights on.</div>
+
+  <section id="hero" class="hero">
+    <h1>Keyless<span class="accent">AI</span> &mdash; free LLM inference, <br/>with zero API keys.</h1>
+    <p class="hero-sub">Chat below, or use the <strong>public endpoints</strong> in your own code. Click <code>&lt;/&gt; API</code> for copy-paste curl, JS, and Python snippets. When the internet is down, switch to <code>webllm</code> and run open models on your GPU.</p>
+    <div class="suggestion-grid" id="suggestions"></div>
+  </section>
+
   <div id="messages" class="messages" aria-live="polite"></div>
   <div id="status" class="status"></div>
+
   <form id="composer" class="composer" autocomplete="off">
-    <textarea id="input" rows="2" placeholder="ask anything. no key. no signup. press enter to send, shift+enter for newline."></textarea>
-    <button type="submit" id="sendBtn" class="btn primary">send</button>
+    <textarea id="input" rows="1" placeholder="ask anything. enter to send, shift+enter for newline."></textarea>
+    <button type="submit" id="sendBtn" class="btn primary">send &rarr;</button>
   </form>
 </main>
 
 <footer class="foot">
   <div>
-    <a href="https://github.com/lordbasilaiassistant-sudo/keylessai" target="_blank" rel="noopener">source</a>
-    &middot;
+    <a href="https://github.com/lordbasilaiassistant-sudo/keylessai" target="_blank" rel="noopener">github</a>
+    &nbsp;&middot;&nbsp;
+    <a href="#" id="apiLink">api</a>
+    &nbsp;&middot;&nbsp;
     <a href="#" id="aboutLink">about</a>
-    &middot;
-    <span class="muted">streaming via public endpoints. be kind to them.</span>
   </div>
   <div class="donate-row">
-    <span class="muted">donate:</span>
+    <span>donate:</span>
     <a class="donate-btn" href="https://buy.stripe.com/cNidR2bGo2OD6P3cx58Vi0X" target="_blank" rel="noopener">$3</a>
     <a class="donate-btn" href="https://buy.stripe.com/14A4gs6m4exl8Xb0On8Vi0Y" target="_blank" rel="noopener">$5</a>
     <a class="donate-btn" href="https://buy.stripe.com/14AaEQ6m42ODgpD68H8Vi0Z" target="_blank" rel="noopener">$10</a>
@@ -60,26 +236,34 @@
   </div>
 </footer>
 
-<dialog id="aboutDialog" class="dialog">
-  <article>
-    <h2>What is this?</h2>
-    <p><b>Keyless</b> is a static web app that talks to <em>public, no-auth</em> LLM endpoints. There is no backend. There are no API keys. There is no tracking. The whole thing is a single HTML page served from GitHub Pages.</p>
-    <h3>How is it free?</h3>
+<div class="drawer-scrim" id="drawerScrim"></div>
+<aside class="drawer" id="apiDrawer" aria-hidden="true">
+  <div class="drawer-head">
+    <div>
+      <h2>Public API endpoints</h2>
+      <div class="muted">use from anywhere &middot; no keys</div>
+    </div>
+    <button class="drawer-close" id="drawerClose" aria-label="Close">&times;</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"><!-- populated by api.js --></div>
+</aside>
+
+<dialog id="aboutDialog">
+  <article style="padding:22px;max-width:560px;">
+    <h2 style="margin-top:0;color:var(--accent);">What is this?</h2>
+    <p><strong>KeylessAI</strong> is a static web app that talks to <em>public, no-auth</em> LLM endpoints. There is no backend. There are no API keys. There is no tracking. The whole thing is a single HTML page served from GitHub Pages.</p>
+    <h3 style="color:var(--blue);">How is it free?</h3>
     <ul>
-      <li><b>Pollinations.ai</b> &mdash; invites public use of their inference API. Bandwidth paid by their sponsors.</li>
-      <li><b>DuckDuckGo AI Chat</b> &mdash; keyless after a two-step VQD handshake, routed through a CORS relay.</li>
-      <li><b>WebLLM</b> &mdash; runs open models locally in your browser via WebGPU. Zero network cost, zero privacy exposure.</li>
+      <li><strong>Pollinations.ai</strong> invites public use of their inference API. Bandwidth paid by their sponsors.</li>
+      <li><strong>WebLLM</strong> runs open models locally in your browser via WebGPU. Zero network cost, full privacy.</li>
     </ul>
-    <h3>If one provider fails?</h3>
-    <p>Set provider to <code>auto</code> and the router retries the next one until something answers.</p>
-    <h3>Will this always work?</h3>
-    <p>Public endpoints change. If everything upstream breaks, switch to <b>webllm</b> and the app still runs &mdash; the model downloads once, then inference is fully local.</p>
-    <h3>Credits</h3>
-    <p>Built with Claude Code by drlor. No warranty, MIT license.</p>
+    <h3 style="color:var(--blue);">Want to use these in your code?</h3>
+    <p>Click the <code>&lt;/&gt; API</code> button. Copy-paste snippets for curl, fetch, Python. No keys, ever.</p>
     <form method="dialog"><button class="btn">close</button></form>
   </article>
 </dialog>
 
 <script type="module" src="./app.js"></script>
+<script type="module" src="./api.js"></script>
 </body>
 </html>

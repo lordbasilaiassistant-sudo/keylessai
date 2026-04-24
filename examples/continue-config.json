@@ -1,0 +1,20 @@
+{
+  "_comment": "Place this in ~/.continue/config.json (or merge with your existing config). Continue.dev will auto-reload.",
+  "models": [
+    {
+      "title": "KeylessAI (gpt-oss-20b)",
+      "provider": "openai",
+      "apiBase": "https://text.pollinations.ai",
+      "apiKey": "not-needed",
+      "model": "openai-fast",
+      "contextLength": 32000
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "KeylessAI autocomplete",
+    "provider": "openai",
+    "apiBase": "https://text.pollinations.ai",
+    "apiKey": "not-needed",
+    "model": "openai-fast"
+  }
+}

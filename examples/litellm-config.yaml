@@ -1,0 +1,29 @@
+# LiteLLM Proxy — unify KeylessAI with your other providers.
+# pip install litellm
+# litellm --config litellm-config.yaml --port 4000
+
+model_list:
+  # Free tier via KeylessAI / Pollinations anonymous
+  - model_name: openai-fast
+    litellm_params:
+      model: openai/openai-fast
+      api_base: https://text.pollinations.ai
+      api_key: not-needed
+
+  - model_name: gpt-4o-mini-free
+    litellm_params:
+      model: openai/openai-fast
+      api_base: https://text.pollinations.ai
+      api_key: not-needed
+
+  # Pin the KeylessAI endpoint as the default openai route —
+  # every tool that points at localhost:4000 with an OpenAI SDK
+  # will get routed here for free.
+  - model_name: "*"
+    litellm_params:
+      model: openai/openai-fast
+      api_base: https://text.pollinations.ai
+      api_key: not-needed
+
+general_settings:
+  master_key: local-dev-only   # change if exposing this proxy publicly

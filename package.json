@@ -1,0 +1,58 @@
+{
+  "name": "keylessai",
+  "version": "0.1.0",
+  "description": "Free OpenAI-compatible LLM endpoint. No API keys. Runs as a local proxy on your machine — zero cost, infinite scale.",
+  "type": "module",
+  "bin": {
+    "keylessai": "./bin/keylessai.js"
+  },
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./providers/pollinations": "./providers/pollinations.js",
+    "./providers/pollinations-get": "./providers/pollinations-get.js",
+    "./router": "./router.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "providers",
+    "router.js",
+    "README.md",
+    "AGENTS.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "serve": "node ./bin/keylessai.js serve",
+    "test": "node ./bin/keylessai.js test"
+  },
+  "keywords": [
+    "openai",
+    "llm",
+    "free",
+    "no-api-key",
+    "keyless",
+    "proxy",
+    "openai-compatible",
+    "aider",
+    "cline",
+    "continue",
+    "langchain",
+    "pollinations",
+    "drop-in-replacement",
+    "local-llm"
+  ],
+  "author": "drlor",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lordbasilaiassistant-sudo/keylessai.git"
+  },
+  "homepage": "https://lordbasilaiassistant-sudo.github.io/keylessai/",
+  "bugs": {
+    "url": "https://github.com/lordbasilaiassistant-sudo/keylessai/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
