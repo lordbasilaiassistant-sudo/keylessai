@@ -65,8 +65,8 @@ const MAX_CLIENT_ERROR_MSG = 300;
 const INTERNAL_ERROR_PATTERNS = [
   /\b[a-zA-Z]:[\\/][^\s]+/g,       // Windows absolute paths (C:\...)
   /\/(usr|home|root|Users)\/[^\s]+/g, // Unix absolute paths
-  /at .+\(.+:\d+:\d+\)/g,           // V8 stack trace frames
-  /at .+:\d+:\d+/g,                 // Simpler stack frames
+  /at [^(\n]{1,300}\([^)\n]{1,500}:\d+:\d+\)/g, // V8 stack trace frames (bounded, non-overlapping — no ReDoS)
+  /at [^\s:\n]{1,300}:\d+:\d+/g,   // Simpler stack frames (bounded)
 ];
 function safeErrorMessage(msg, fallback = "internal error") {
   const raw = String(msg || fallback);
