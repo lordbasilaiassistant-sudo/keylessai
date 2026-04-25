@@ -13,10 +13,33 @@
 // enable Workers Paid. If traffic exceeds the cap, requests 429 for the
 // rest of the day — graceful degradation, no surprise invoices.
 
-import { streamChat, listAllModels, PROVIDERS, slotGate, breaker, metrics } from "../src/core/router.js";
+import { streamChat, listAllModels, PROVIDERS, slotGate, breaker, metrics, ToolsUnsupportedError } from "../src/core/router.js";
 import { defaultCache } from "../src/core/cache.js";
 import { defaultLimiter, clientIp } from "../src/server/ratelimit.js";
 import { validateChatBody, validateCompletionsBody } from "../src/server/validate.js";
+
+function toolDeltaChunk(c) {
+  const fn = {};
+  if (c.name !== undefined) fn.name = c.name;
+  if (c.arguments !== undefined) fn.arguments = c.arguments;
+  const tc = { index: c.index || 0 };
+  if (c.id !== undefined) tc.id = c.id;
+  tc.type = "function";
+  tc.function = fn;
+  return tc;
+}
+
+function buildToolCallsFromAccumulator(acc) {
+  const indices = Object.keys(acc).map(Number).sort((a, b) => a - b);
+  return indices.map((i) => {
+    const e = acc[i];
+    return {
+      id: e.id || `call_${i}`,
+      type: "function",
+      function: { name: e.name || "", arguments: e.arguments || "" },
+    };
+  });
+}
 
 const MODEL_ALIASES = {
   "gpt-3.5-turbo": "openai-fast",
@@ -146,20 +169,27 @@ async function runChat(body) {
   const model = resolveModel(requestedModel);
   const stream = !!body.stream;
   const messages = body.messages;
+  const tools = body.tools;
+  const tool_choice = body.tool_choice;
+  const parallel_tool_calls = body.parallel_tool_calls;
+  // Tool-bearing requests are inherently non-idempotent — bypass cache entirely.
+  const useCache = !(Array.isArray(tools) && tools.length > 0);
 
   const id = `chatcmpl-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
   const created = Math.floor(Date.now() / 1000);
   let activeProvider = null;
 
-  const cacheKey = defaultCache.keyFor({
-    model,
-    messages,
-    temperature: body.temperature,
-    top_p: body.top_p,
-    tools: body.tools,
-    response_format: body.response_format,
-  });
-  const cached = defaultCache.get(cacheKey);
+  const cacheKey = useCache
+    ? defaultCache.keyFor({
+        model,
+        messages,
+        temperature: body.temperature,
+        top_p: body.top_p,
+        tools: body.tools,
+        response_format: body.response_format,
+      })
+    : null;
+  const cached = useCache ? defaultCache.get(cacheKey) : null;
 
   if (stream) {
     const { readable, writable } = new TransformStream();
@@ -200,23 +230,41 @@ async function runChat(body) {
       }
 
       let assembled = "";
+      let toolCallsEmitted = false;
       try {
         for await (const chunk of streamChat({
           provider: "auto",
           model,
           messages,
+          tools,
+          tool_choice,
+          parallel_tool_calls,
           onProviderChange: (p) => (activeProvider = p),
         })) {
-          if (chunk.type !== "content") continue;
-          assembled += chunk.text;
-          write({
-            id,
-            object: "chat.completion.chunk",
-            created,
-            model: requestedModel,
-            keylessai_provider: activeProvider,
-            choices: [{ index: 0, delta: { content: chunk.text }, finish_reason: null }],
-          });
+          if (chunk.type === "content") {
+            assembled += chunk.text;
+            write({
+              id,
+              object: "chat.completion.chunk",
+              created,
+              model: requestedModel,
+              keylessai_provider: activeProvider,
+              choices: [{ index: 0, delta: { content: chunk.text }, finish_reason: null }],
+            });
+            continue;
+          }
+          if (chunk.type === "tool_call_delta") {
+            toolCallsEmitted = true;
+            write({
+              id,
+              object: "chat.completion.chunk",
+              created,
+              model: requestedModel,
+              keylessai_provider: activeProvider,
+              choices: [{ index: 0, delta: { tool_calls: [toolDeltaChunk(chunk)] }, finish_reason: null }],
+            });
+            continue;
+          }
         }
         write({
           id,
@@ -224,11 +272,18 @@ async function runChat(body) {
           created,
           model: requestedModel,
           keylessai_provider: activeProvider,
-          choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+          choices: [{ index: 0, delta: {}, finish_reason: toolCallsEmitted ? "tool_calls" : "stop" }],
         });
-        if (assembled) defaultCache.put(cacheKey, assembled);
+        if (useCache && !toolCallsEmitted && assembled) defaultCache.put(cacheKey, assembled);
       } catch (e) {
-        write({ error: { message: safeErrorMessage(e.message), type: "keylessai_upstream_error" } });
+        const isToolUnsupported = e instanceof ToolsUnsupportedError;
+        write({
+          error: {
+            message: safeErrorMessage(e.message),
+            type: isToolUnsupported ? "invalid_request_error" : "keylessai_upstream_error",
+            code: isToolUnsupported ? "tool_calls_unsupported" : undefined,
+          },
+        });
       } finally {
         await writer.write(encoder.encode("data: [DONE]\n\n"));
         await writer.close();
@@ -259,20 +314,42 @@ async function runChat(body) {
   }
 
   let assembled = "";
+  const toolAcc = {};
+  let toolCallsEmitted = false;
   try {
     for await (const chunk of streamChat({
       provider: "auto",
       model,
       messages,
+      tools,
+      tool_choice,
+      parallel_tool_calls,
       onProviderChange: (p) => (activeProvider = p),
     })) {
-      if (chunk.type === "content") assembled += chunk.text;
+      if (chunk.type === "content") {
+        assembled += chunk.text;
+      } else if (chunk.type === "tool_call_delta") {
+        toolCallsEmitted = true;
+        const idx = chunk.index || 0;
+        const e = toolAcc[idx] || (toolAcc[idx] = { id: undefined, name: "", arguments: "" });
+        if (chunk.id !== undefined) e.id = chunk.id;
+        if (chunk.name !== undefined) e.name += chunk.name;
+        if (chunk.arguments !== undefined) e.arguments += chunk.arguments;
+      }
     }
   } catch (e) {
+    if (e instanceof ToolsUnsupportedError) {
+      return errorResp(400, e.message, "invalid_request_error");
+    }
     return errorResp(502, e.message, "keylessai_upstream_error");
   }
 
-  if (assembled) defaultCache.put(cacheKey, assembled);
+  if (useCache && !toolCallsEmitted && assembled) defaultCache.put(cacheKey, assembled);
+
+  const message = { role: "assistant", content: toolCallsEmitted ? null : assembled };
+  if (toolCallsEmitted) {
+    message.tool_calls = buildToolCallsFromAccumulator(toolAcc);
+  }
 
   return json(200, {
     id,
@@ -280,7 +357,7 @@ async function runChat(body) {
     created,
     model: requestedModel,
     keylessai_provider: activeProvider,
-    choices: [{ index: 0, message: { role: "assistant", content: assembled }, finish_reason: "stop" }],
+    choices: [{ index: 0, message, finish_reason: toolCallsEmitted ? "tool_calls" : "stop" }],
     usage: { prompt_tokens: null, completion_tokens: null, total_tokens: null },
   });
 }
@@ -307,7 +384,7 @@ async function handleModels() {
 async function handleHealth() {
   return json(200, {
     status: "ok",
-    version: "0.3.0",
+    version: "0.4.0",
     runtime: "cloudflare-worker",
     providers: Object.keys(PROVIDERS),
     aliases: Object.keys(MODEL_ALIASES).length,
