@@ -7,6 +7,7 @@ const DEADLINE_MS = 180000;
 
 export const id = "airforce";
 export const label = "ApiAirforce";
+export const capabilities = { tools: true };
 
 const FREE_MODELS = [
   { id: "grok-4.1-mini:free", note: "reasoning, tool-capable" },
@@ -61,18 +62,23 @@ function stripThinkTags(text) {
   return text.replace(/<think>[\s\S]*?<\/think>/g, "").replace(/<think>[\s\S]*$/, "");
 }
 
-export async function* streamChat({ model, messages, signal }) {
+export async function* streamChat({ model, messages, signal, tools, tool_choice, parallel_tool_calls }) {
   const { signal: fetchSignal, dispose } = combineSignalWithTimeout(signal, FETCH_TIMEOUT_MS);
+  const upstreamBody = {
+    model: model || "grok-4.1-mini:free",
+    messages,
+    stream: true,
+  };
+  if (Array.isArray(tools) && tools.length > 0) upstreamBody.tools = tools;
+  if (tool_choice !== undefined) upstreamBody.tool_choice = tool_choice;
+  if (parallel_tool_calls !== undefined) upstreamBody.parallel_tool_calls = parallel_tool_calls;
+
   let res;
   try {
     res = await fetch(`${BASE}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: model || "grok-4.1-mini:free",
-        messages,
-        stream: true,
-      }),
+      body: JSON.stringify(upstreamBody),
       signal: fetchSignal,
     });
   } finally {
@@ -113,6 +119,20 @@ export async function* streamChat({ model, messages, signal }) {
       }
       const delta = parsed?.choices?.[0]?.delta;
       if (!delta) continue;
+
+      if (Array.isArray(delta.tool_calls)) {
+        for (const tc of delta.tool_calls) {
+          if (!tc || typeof tc !== "object") continue;
+          const out = { type: "tool_call_delta", index: typeof tc.index === "number" ? tc.index : 0 };
+          if (typeof tc.id === "string") out.id = tc.id;
+          const fn = tc.function;
+          if (fn && typeof fn === "object") {
+            if (typeof fn.name === "string") out.name = fn.name;
+            if (typeof fn.arguments === "string") out.arguments = fn.arguments;
+          }
+          yield out;
+        }
+      }
 
       let text = typeof delta.content === "string" ? delta.content : "";
       if (!text) {

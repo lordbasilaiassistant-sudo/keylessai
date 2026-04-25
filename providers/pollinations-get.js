@@ -2,6 +2,7 @@ const BASE = "https://text.pollinations.ai";
 
 export const id = "pollinations-get";
 export const label = "Pollinations (GET)";
+export const capabilities = { tools: false };
 
 export async function listModels() {
   return [

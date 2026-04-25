@@ -1,6 +1,6 @@
 {
   "name": "keylessai",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Free OpenAI-compatible LLM endpoint live at https://keylessai.thryx.workers.dev/v1. No API keys, no signup, no local install — adaptive failover across 4 keyless upstream LLM providers on Cloudflare Workers.",
   "type": "module",
   "bin": {
@@ -28,7 +28,7 @@
   ],
   "scripts": {
     "serve": "node ./bin/keylessai.js serve",
-    "test": "node --test test/markdown.test.mjs test/cache.test.mjs test/queue.test.mjs test/storage.test.mjs test/notices.test.mjs test/stream.test.mjs test/circuit.test.mjs test/metrics.test.mjs test/validate.test.mjs test/ratelimit.test.mjs test/register.test.mjs",
+    "test": "node --test test/markdown.test.mjs test/cache.test.mjs test/queue.test.mjs test/storage.test.mjs test/notices.test.mjs test/stream.test.mjs test/circuit.test.mjs test/metrics.test.mjs test/validate.test.mjs test/ratelimit.test.mjs test/register.test.mjs test/tools.test.mjs test/tools.extreme.test.mjs",
     "live-test": "node ./bin/keylessai.js test",
     "doctor": "node ./bin/keylessai.js doctor",
     "prepublishOnly": "npm test"

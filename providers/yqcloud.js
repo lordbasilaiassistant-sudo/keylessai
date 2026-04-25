@@ -17,6 +17,7 @@ const DEADLINE_MS = 180000;
 
 export const id = "yqcloud";
 export const label = "Yqcloud (via binjie.fun)";
+export const capabilities = { tools: false };
 
 const MODELS = [
   { id: "default", label: "default — keyless chat via Yqcloud" },

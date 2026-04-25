@@ -32,6 +32,8 @@ export {
   registerProvider,
   unregisterProvider,
   setFailoverOrder,
+  providerSupportsTools,
+  ToolsUnsupportedError,
 } from "./core/router.js";
 export { PromptCache, defaultCache } from "./core/cache.js";
 export { SlotGate, defaultSlotGate } from "./core/queue.js";

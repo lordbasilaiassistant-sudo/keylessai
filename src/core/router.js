@@ -43,6 +43,20 @@ export const FAILOVER_ORDER = [
 ];
 
 /**
+ * Returns true if the provider advertises tool-calling support.
+ * Defaults to false for providers without an explicit `capabilities` block —
+ * keeps custom providers safe-by-default (a tool request never silently
+ * degrades to a provider that would just emit free-form text).
+ *
+ * @param {string} id
+ * @returns {boolean}
+ */
+export function providerSupportsTools(id) {
+  const p = PROVIDERS[id];
+  return !!(p && p.capabilities && p.capabilities.tools);
+}
+
+/**
  * Register a custom provider with the router.
  *
  * Provider module shape:
@@ -50,9 +64,10 @@ export const FAILOVER_ORDER = [
  * {
  *   id: "my-provider",                    // unique string id
  *   label: "My Provider",                 // human-readable
+ *   capabilities: { tools: false },       // optional — defaults to no tool support
  *   async listModels() { ... },           // returns [{id, label, provider}]
  *   async healthCheck() { ... },          // returns boolean
- *   async* streamChat({ model, messages, signal, onStatus }) { ... }
+ *   async* streamChat({ model, messages, signal, onStatus, tools, tool_choice }) { ... }
  * }
  * ```
  *
@@ -176,7 +191,7 @@ const MAX_NOTICE_RETRIES = 2;      // 1 retry for notice, then bail (pinned only
 const MAX_TRANSIENT_RETRIES = 3;   // for 429/5xx/network hiccups (pinned only)
 const NOTICE_RETRY_DELAY_MS = 100; // effectively "immediate"
 
-async function* tryOne({ providerId, model, messages, signal, onStatus, failFast = false }) {
+async function* tryOne({ providerId, model, messages, signal, onStatus, tools, tool_choice, parallel_tool_calls, failFast = false }) {
   const p = PROVIDERS[providerId];
   if (!p) throw new Error(`unknown provider: ${providerId}`);
 
@@ -190,7 +205,7 @@ async function* tryOne({ providerId, model, messages, signal, onStatus, failFast
     let erroredInStream;
 
     try {
-      for await (const chunk of p.streamChat({ model, messages, signal, onStatus })) {
+      for await (const chunk of p.streamChat({ model, messages, signal, onStatus, tools, tool_choice, parallel_tool_calls })) {
         if (chunk.type !== "content") {
           yield chunk;
           continue;
@@ -248,18 +263,36 @@ async function* tryOne({ providerId, model, messages, signal, onStatus, failFast
 }
 
 /**
+ * Thrown when a request asks for tools but no installed provider can fulfill it.
+ * The proxy/worker layer maps this to a 400 response so the client gets a
+ * clear failure mode rather than a silent degrade to a non-tool provider.
+ */
+export class ToolsUnsupportedError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ToolsUnsupportedError";
+    this.code = "tool_calls_unsupported";
+  }
+}
+
+/**
  * Streams a chat completion through the provider pool with failover, retry,
- * and notice/ad detection. Yields chunks: `{type:"content",text:string}` for
- * regular tokens, `{type:"reasoning",text:string}` for thinking tokens.
+ * and notice/ad detection. Yields chunks:
+ *   - `{type:"content", text:string}` regular tokens
+ *   - `{type:"reasoning", text:string}` thinking tokens
+ *   - `{type:"tool_call_delta", index, id?, name?, arguments?}` incremental tool calls
  *
  * @param {object} options
  * @param {string} [options.provider="auto"]      Provider id, or "auto" for failover across FAILOVER_ORDER.
  * @param {string} [options.model]                Provider-specific model id. If omitted, provider picks its default.
  * @param {Array<{role:string,content:string}>} options.messages
+ * @param {Array<object>} [options.tools]         OpenAI tool schemas to forward to the upstream provider.
+ * @param {object|string} [options.tool_choice]   OpenAI tool_choice ("auto", "none", or {type, function}).
+ * @param {boolean} [options.parallel_tool_calls] Whether the model may emit multiple tool calls in one turn.
  * @param {AbortSignal} [options.signal]          Abort the stream.
  * @param {(msg:string)=>void} [options.onStatus] Fires on each internal state change (queued, retrying, via X, etc.).
  * @param {(id:string)=>void} [options.onProviderChange] Fires with the active provider id whenever it changes.
- * @returns {AsyncGenerator<{type:"content"|"reasoning",text:string}>}
+ * @returns {AsyncGenerator<{type:"content"|"reasoning"|"tool_call_delta",text?:string,index?:number,id?:string,name?:string,arguments?:string}>}
  */
 export async function* streamChat({
   provider,
@@ -268,15 +301,25 @@ export async function* streamChat({
   signal,
   onStatus,
   onProviderChange,
+  tools,
+  tool_choice,
+  parallel_tool_calls,
 }) {
+  const wantsTools = Array.isArray(tools) && tools.length > 0;
+
   if (slotGate.depth > 0 && onStatus) {
     onStatus(`queued (${slotGate.depth} ahead, ~${Math.round(slotGate.estimatedWaitMs / 1000)}s wait)…`);
   }
   const release = await slotGate.acquire();
   try {
     if (provider && provider !== "auto") {
+      if (wantsTools && !providerSupportsTools(provider)) {
+        throw new ToolsUnsupportedError(
+          `provider "${provider}" does not support tool calling`
+        );
+      }
       if (onProviderChange) onProviderChange(provider);
-      yield* tryOne({ providerId: provider, model, messages, signal, onStatus });
+      yield* tryOne({ providerId: provider, model, messages, signal, onStatus, tools, tool_choice, parallel_tool_calls });
       return;
     }
 
@@ -289,7 +332,16 @@ export async function* streamChat({
     // Circuit breaker skips providers that have failed 5+ times in a row
     // for 30 seconds. Remaining candidates are ranked by `metrics.score()`
     // which combines success rate (weighted) and TTFB.
-    const ranked = metrics.rank(FAILOVER_ORDER);
+    let candidates = FAILOVER_ORDER;
+    if (wantsTools) {
+      candidates = candidates.filter(providerSupportsTools);
+      if (candidates.length === 0) {
+        throw new ToolsUnsupportedError(
+          "no installed provider supports tool calling"
+        );
+      }
+    }
+    const ranked = metrics.rank(candidates);
     let lastErr;
     for (const id of ranked) {
       const p = PROVIDERS[id];
@@ -310,9 +362,12 @@ export async function* streamChat({
           messages,
           signal,
           onStatus,
+          tools,
+          tool_choice,
+          parallel_tool_calls,
           failFast: true,
         })) {
-          if (!emitted && chunk.type === "content") {
+          if (!emitted && (chunk.type === "content" || chunk.type === "tool_call_delta")) {
             ttfbMs = Date.now() - startedAt;
           }
           emitted = true;
