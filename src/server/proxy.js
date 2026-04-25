@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { streamChat, listAllModels, PROVIDERS } from "../core/router.js";
+import { streamChat, listAllModels, PROVIDERS, ToolsUnsupportedError } from "../core/router.js";
 import { defaultCache } from "../core/cache.js";
 import {
   validateChatBody,
@@ -7,6 +7,41 @@ import {
   ValidationError,
 } from "./validate.js";
 import { defaultLimiter, clientIp } from "./ratelimit.js";
+
+/**
+ * Convert a {type:"tool_call_delta", index, id?, name?, arguments?} chunk
+ * into an OpenAI-shaped streaming `delta.tool_calls` element.
+ */
+function toolDeltaChunk(c) {
+  const fn = {};
+  if (c.name !== undefined) fn.name = c.name;
+  if (c.arguments !== undefined) fn.arguments = c.arguments;
+  const tc = { index: c.index || 0 };
+  if (c.id !== undefined) tc.id = c.id;
+  tc.type = "function";
+  tc.function = fn;
+  return tc;
+}
+
+/**
+ * Build the final non-streaming `message.tool_calls` array from accumulated
+ * deltas. Keyed by `index` so parallel tool calls assemble independently
+ * and out-of-order fragments still produce a stable result.
+ */
+function buildToolCallsFromAccumulator(acc) {
+  const indices = Object.keys(acc).map(Number).sort((a, b) => a - b);
+  return indices.map((i) => {
+    const e = acc[i];
+    return {
+      id: e.id || `call_${i}`,
+      type: "function",
+      function: {
+        name: e.name || "",
+        arguments: e.arguments || "",
+      },
+    };
+  });
+}
 
 const MODEL_ALIASES = {
   "gpt-3.5-turbo": "openai-fast",
@@ -136,6 +171,14 @@ async function handleChatCompletionsWithBody(req, res, body, log) {
   const model = resolveModel(requestedModel);
   const stream = !!body.stream;
   const requestedProvider = body.provider || "auto";
+  const tools = body.tools;
+  const tool_choice = body.tool_choice;
+  const parallel_tool_calls = body.parallel_tool_calls;
+  // Tool-bearing requests bypass the prompt cache entirely. Tool-call payloads
+  // are inherently non-idempotent (each call_id participates in a turn-by-turn
+  // round trip with the client) — replaying a cached response would either
+  // collide call_ids or skip the round trip the client expects.
+  const useCache = !(Array.isArray(tools) && tools.length > 0);
 
   const id = `chatcmpl-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
   const created = Math.floor(Date.now() / 1000);
@@ -144,15 +187,17 @@ async function handleChatCompletionsWithBody(req, res, body, log) {
   const controller = new AbortController();
   req.on("close", () => controller.abort());
 
-  const cacheKey = defaultCache.keyFor({
-    model,
-    messages,
-    temperature: body.temperature,
-    top_p: body.top_p,
-    tools: body.tools,
-    response_format: body.response_format,
-  });
-  const cached = defaultCache.get(cacheKey);
+  const cacheKey = useCache
+    ? defaultCache.keyFor({
+        model,
+        messages,
+        temperature: body.temperature,
+        top_p: body.top_p,
+        tools: body.tools,
+        response_format: body.response_format,
+      })
+    : null;
+  const cached = useCache ? defaultCache.get(cacheKey) : null;
 
   if (stream) {
     res.writeHead(200, {
@@ -199,27 +244,45 @@ async function handleChatCompletionsWithBody(req, res, body, log) {
     }
 
     let streamAssembled = "";
+    let toolCallsEmitted = false;
     try {
       for await (const chunk of streamChat({
         provider: requestedProvider,
         model,
         messages,
+        tools,
+        tool_choice,
+        parallel_tool_calls,
         signal: controller.signal,
         onProviderChange: (p) => {
           activeProvider = p;
           log(`→ streaming via ${p}`);
         },
       })) {
-        if (chunk.type !== "content") continue;
-        streamAssembled += chunk.text;
-        writeSse({
-          id,
-          object: "chat.completion.chunk",
-          created,
-          model: requestedModel,
-          keylessai_provider: activeProvider,
-          choices: [{ index: 0, delta: { content: chunk.text }, finish_reason: null }],
-        });
+        if (chunk.type === "content") {
+          streamAssembled += chunk.text;
+          writeSse({
+            id,
+            object: "chat.completion.chunk",
+            created,
+            model: requestedModel,
+            keylessai_provider: activeProvider,
+            choices: [{ index: 0, delta: { content: chunk.text }, finish_reason: null }],
+          });
+          continue;
+        }
+        if (chunk.type === "tool_call_delta") {
+          toolCallsEmitted = true;
+          writeSse({
+            id,
+            object: "chat.completion.chunk",
+            created,
+            model: requestedModel,
+            keylessai_provider: activeProvider,
+            choices: [{ index: 0, delta: { tool_calls: [toolDeltaChunk(chunk)] }, finish_reason: null }],
+          });
+          continue;
+        }
       }
       writeSse({
         id,
@@ -227,15 +290,23 @@ async function handleChatCompletionsWithBody(req, res, body, log) {
         created,
         model: requestedModel,
         keylessai_provider: activeProvider,
-        choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+        choices: [{ index: 0, delta: {}, finish_reason: toolCallsEmitted ? "tool_calls" : "stop" }],
       });
       res.write("data: [DONE]\n\n");
       res.end();
-      if (streamAssembled) defaultCache.put(cacheKey, streamAssembled);
+      // Never cache a response that included tool_calls — see useCache note above.
+      if (useCache && !toolCallsEmitted && streamAssembled) {
+        defaultCache.put(cacheKey, streamAssembled);
+      }
     } catch (e) {
       if (!res.writableEnded) {
+        const isToolUnsupported = e instanceof ToolsUnsupportedError;
         writeSse({
-          error: { message: safeErrorMessage(e.message, "upstream failure"), type: "keylessai_upstream_error" },
+          error: {
+            message: safeErrorMessage(e.message, "upstream failure"),
+            type: isToolUnsupported ? "invalid_request_error" : "keylessai_upstream_error",
+            code: isToolUnsupported ? "tool_calls_unsupported" : undefined,
+          },
         });
         res.write("data: [DONE]\n\n");
         res.end();
@@ -264,23 +335,45 @@ async function handleChatCompletionsWithBody(req, res, body, log) {
   }
 
   let assembled = "";
+  const toolAcc = {};
+  let toolCallsEmitted = false;
   try {
     for await (const chunk of streamChat({
       provider: requestedProvider,
       model,
       messages,
+      tools,
+      tool_choice,
+      parallel_tool_calls,
       signal: controller.signal,
       onProviderChange: (p) => {
         activeProvider = p;
       },
     })) {
-      if (chunk.type === "content") assembled += chunk.text;
+      if (chunk.type === "content") {
+        assembled += chunk.text;
+      } else if (chunk.type === "tool_call_delta") {
+        toolCallsEmitted = true;
+        const idx = chunk.index || 0;
+        const e = toolAcc[idx] || (toolAcc[idx] = { id: undefined, name: "", arguments: "" });
+        if (chunk.id !== undefined) e.id = chunk.id;
+        if (chunk.name !== undefined) e.name += chunk.name;
+        if (chunk.arguments !== undefined) e.arguments += chunk.arguments;
+      }
     }
   } catch (e) {
+    if (e instanceof ToolsUnsupportedError) {
+      return sendError(res, 400, safeErrorMessage(e.message), "invalid_request_error");
+    }
     return sendError(res, 502, safeErrorMessage(e.message, "upstream failure"), "keylessai_upstream_error");
   }
 
-  if (assembled) defaultCache.put(cacheKey, assembled);
+  if (useCache && !toolCallsEmitted && assembled) defaultCache.put(cacheKey, assembled);
+
+  const message = { role: "assistant", content: toolCallsEmitted ? null : assembled };
+  if (toolCallsEmitted) {
+    message.tool_calls = buildToolCallsFromAccumulator(toolAcc);
+  }
 
   sendJson(res, 200, {
     id,
@@ -291,8 +384,8 @@ async function handleChatCompletionsWithBody(req, res, body, log) {
     choices: [
       {
         index: 0,
-        message: { role: "assistant", content: assembled },
-        finish_reason: "stop",
+        message,
+        finish_reason: toolCallsEmitted ? "tool_calls" : "stop",
       },
     ],
     usage: {
@@ -378,7 +471,7 @@ async function handleHealth(req, res) {
     status: "ok",
     providers: Object.keys(PROVIDERS),
     aliases: Object.keys(MODEL_ALIASES).length,
-    version: "0.3.0",
+    version: "0.4.0",
     queue: slotGate
       ? { depth: slotGate.depth, estimatedWaitMs: slotGate.estimatedWaitMs }
       : null,

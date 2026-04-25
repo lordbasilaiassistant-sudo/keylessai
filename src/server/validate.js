@@ -29,6 +29,8 @@ const ALLOWED_ROLES = new Set(["system", "user", "assistant", "tool", "function"
 const MAX_MESSAGES = 200;
 const MAX_MESSAGE_CONTENT = 500_000;   // per-message content chars
 const MAX_MODEL_LENGTH = 200;
+const MAX_TOOLS = 128;                 // OpenAI's documented limit
+const MAX_TOOL_NAME = 64;              // OpenAI's documented function-name cap
 
 function hasDangerousKey(obj) {
   if (!obj || typeof obj !== "object") return false;
@@ -118,8 +120,50 @@ export function validateChatBody(body) {
     }
   }
 
-  if (tools !== undefined && !Array.isArray(tools)) {
-    throw new ValidationError("tools must be an array");
+  if (tools !== undefined) {
+    if (!Array.isArray(tools)) {
+      throw new ValidationError("tools must be an array");
+    }
+    if (tools.length > MAX_TOOLS) {
+      throw new ValidationError(`tools must have at most ${MAX_TOOLS} entries`);
+    }
+    for (let i = 0; i < tools.length; i++) {
+      const t = tools[i];
+      if (!t || typeof t !== "object" || Array.isArray(t)) {
+        throw new ValidationError(`tools[${i}] must be an object`);
+      }
+      // OpenAI shape: {type:"function", function:{name, description?, parameters?}}
+      if (t.type !== undefined && typeof t.type !== "string") {
+        throw new ValidationError(`tools[${i}].type must be a string`);
+      }
+      const fn = t.function;
+      if (fn !== undefined) {
+        if (!fn || typeof fn !== "object" || Array.isArray(fn)) {
+          throw new ValidationError(`tools[${i}].function must be an object`);
+        }
+        if (typeof fn.name !== "string" || fn.name.length === 0 || fn.name.length > MAX_TOOL_NAME) {
+          throw new ValidationError(`tools[${i}].function.name must be a 1..${MAX_TOOL_NAME} char string`);
+        }
+        // OpenAI's own constraint on function names. Enforcing it here gives
+        // a clear 400 rather than a confused upstream 500 later.
+        if (!/^[a-zA-Z0-9_-]+$/.test(fn.name)) {
+          throw new ValidationError(`tools[${i}].function.name must match [a-zA-Z0-9_-]+`);
+        }
+      }
+    }
+  }
+
+  if (body.tool_choice !== undefined) {
+    const tc = body.tool_choice;
+    const okString = typeof tc === "string" && (tc === "auto" || tc === "none" || tc === "required");
+    const okObject = tc && typeof tc === "object" && !Array.isArray(tc);
+    if (!okString && !okObject) {
+      throw new ValidationError(`tool_choice must be "auto" | "none" | "required" | {type, function}`);
+    }
+  }
+
+  if (body.parallel_tool_calls !== undefined && typeof body.parallel_tool_calls !== "boolean") {
+    throw new ValidationError("parallel_tool_calls must be a boolean");
   }
 
   if (response_format !== undefined) {
