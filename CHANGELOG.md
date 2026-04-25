@@ -4,6 +4,26 @@ Notable changes. This project follows [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-04-25
+
+Tool calling. The `tools` field is no longer silently dropped — `tool_calls` round-trips end to end on the public Worker and the local proxy.
+
+### Added
+- **OpenAI tool calling** — `POST /v1/chat/completions` with a `tools` array now returns `message.tool_calls` (non-stream) or `delta.tool_calls` SSE deltas (stream). `tool_choice`, `parallel_tool_calls`, and `role: "tool"` reply messages are all forwarded through the pipeline. `finish_reason` correctly reports `"tool_calls"` when the model emits a call.
+- **Provider capability flags** — every provider now exports `capabilities = { tools: bool }`. Pollinations + ApiAirforce both advertise `true`; Pollinations-GET + Yqcloud are `false`. Custom providers registered via `registerProvider()` default to `false` for safety.
+- **Tool-aware failover** — when a request includes `tools`, the router filters `FAILOVER_ORDER` to providers that advertise `capabilities.tools`. If none qualify, it throws `ToolsUnsupportedError` (mapped to a 400 with `code: "tool_calls_unsupported"`) instead of silently degrading to a non-tool provider.
+- **`providerSupportsTools(id)` + `ToolsUnsupportedError`** exported from the package surface.
+- **Tool schema validation** (`src/server/validate.js`) — `tools.length ≤ 128`, `function.name` length ≤ 64 + charset `[a-zA-Z0-9_-]+`, `tool_choice` shape (`"auto" | "none" | "required" | {type, function}`), `parallel_tool_calls` boolean. All rejections emit a clean 400.
+- **`examples/tool-calling.js`** — runnable two-turn round-trip example using the OpenAI Node SDK + a `get_weather` tool.
+- **27 new tests** across `test/tools.test.mjs` (9 happy-path) and `test/tools.extreme.test.mjs` (18 adversarial — char-by-char streaming, parallel tool calls, prototype-pollution payloads, mid-stream errors, cache-poisoning attempts, all-providers-circuit-open).
+
+### Changed
+- **Cache bypass for tool-bearing requests** — both proxy and Worker now skip `defaultCache` entirely when `body.tools` is present. Tool-call payloads are inherently non-idempotent (each `call_id` participates in a turn-by-turn round trip with the client), so replaying a cached response would either collide call_ids or skip the round trip the client expects.
+- **Worker version bumped to 0.4.0** (visible at `GET /health`).
+
+### Fixed
+- Pollinations + ApiAirforce streamers previously parsed `delta.tool_calls` from the upstream SSE but discarded it. They now emit `{type: "tool_call_delta", index, id?, name?, arguments?}` chunks that propagate through the router untouched.
+
 ## [0.3.0] — 2026-04-24
 
 Public Worker is LIVE. No more localhost-first. Swap one env var and ship.
