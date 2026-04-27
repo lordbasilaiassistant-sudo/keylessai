@@ -1,6 +1,6 @@
 # KeylessAI dogfood tests — Python side.
 # Used by dogfood/openai-python.py and dogfood/langchain-test.py.
 # Not part of the runtime. Pinned loosely so Dependabot can send bumps.
-openai>=1.0,<2.0
+openai>=2.32.0,<3.0
 langchain-openai>=0.1,<1.0
 langchain-core>=0.1,<1.0
