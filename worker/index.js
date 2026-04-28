@@ -17,62 +17,14 @@ import { streamChat, listAllModels, PROVIDERS, slotGate, breaker, metrics, Tools
 import { defaultCache } from "../src/core/cache.js";
 import { defaultLimiter, clientIp } from "../src/server/ratelimit.js";
 import { validateChatBody, validateCompletionsBody } from "../src/server/validate.js";
-
-function toolDeltaChunk(c) {
-  const fn = {};
-  if (c.name !== undefined) fn.name = c.name;
-  if (c.arguments !== undefined) fn.arguments = c.arguments;
-  const tc = { index: c.index || 0 };
-  if (c.id !== undefined) tc.id = c.id;
-  tc.type = "function";
-  tc.function = fn;
-  return tc;
-}
-
-// Defensive stitch (added 2026-04-28 in 0.4.1 after observing Pollinations
-// occasionally fragmenting one logical tool call across two indices — first
-// carries `name + truncated JSON args`, second carries `empty name + tail
-// of args`). Heuristic: if an entry has empty `name` AND its `arguments`
-// don't look like a fresh JSON object AND the previous entry's args don't
-// already form valid JSON, append into the previous entry instead of
-// emitting it as a separate tool call. Restores the model's intent.
-//
-// IMPORTANT: this logic is mirrored in src/server/proxy.js. Keep them in
-// sync until both files import from a shared helper (follow-up task).
-function buildToolCallsFromAccumulator(acc) {
-  const indices = Object.keys(acc).map(Number).sort((a, b) => a - b);
-  const stitched = [];
-  for (const i of indices) {
-    const e = acc[i];
-    const isFragment =
-      !e.name &&
-      stitched.length > 0 &&
-      e.arguments &&
-      !looksLikeOpenJson(e.arguments) &&
-      !isCompleteJson(stitched[stitched.length - 1].arguments);
-    if (isFragment) {
-      stitched[stitched.length - 1].arguments += e.arguments;
-      continue;
-    }
-    stitched.push({ id: e.id, name: e.name || "", arguments: e.arguments || "" });
-  }
-  return stitched.map((e, n) => ({
-    id: e.id || `call_${n}`,
-    type: "function",
-    function: { name: e.name, arguments: e.arguments },
-  }));
-}
-
-function looksLikeOpenJson(s) {
-  if (typeof s !== "string") return false;
-  const t = s.trimStart();
-  return t.startsWith("{") || t.startsWith("[");
-}
-
-function isCompleteJson(s) {
-  if (typeof s !== "string" || !s.trim()) return false;
-  try { JSON.parse(s); return true; } catch { return false; }
-}
+// Tool-call shape helpers — shared with src/server/proxy.js so the stitch
+// logic and the OpenAI delta shape live in exactly one place. No Node-
+// specific imports inside core/proxy-helpers.js so this works on the
+// Cloudflare V8 isolate.
+import {
+  toolDeltaChunk,
+  buildToolCallsFromAccumulator,
+} from "../src/core/proxy-helpers.js";
 
 const MODEL_ALIASES = {
   "gpt-3.5-turbo": "openai-fast",

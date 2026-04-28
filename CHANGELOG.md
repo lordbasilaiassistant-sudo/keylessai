@@ -4,6 +4,18 @@ Notable changes. This project follows [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-04-28
+
+Internal refactor — eliminates duplication in the tool-call assembly path.
+
+### Changed
+- **`buildToolCallsFromAccumulator` + `toolDeltaChunk` + `looksLikeOpenJson` + `isCompleteJson`** moved to a new shared module `src/core/proxy-helpers.js`. Both `src/server/proxy.js` (local Node proxy) and `worker/index.js` (Cloudflare Worker entry) now import from there. Previously the Worker had its own copy of the logic, which had to be hand-mirrored when 0.4.1 added the stitch defense — exactly the kind of drift class this dedup prevents going forward.
+- The shared module has zero Node-specific imports, so it works on Cloudflare V8 isolates, Deno Deploy, Vercel Edge, and Node 18+.
+
+### Internal
+- 136/136 tests still passing — no behavior change.
+- Public API surface unchanged: `buildToolCallsFromAccumulator` is still re-exported from `src/server/proxy.js` for the existing test imports.
+
 ## [0.4.1] — 2026-04-28
 
 Robustness fixes from THRYX dogfooding. Stress-testing AUTO-style tool-call traffic against the live Worker surfaced two real failure modes that callers can't recover from on their own.
