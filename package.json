@@ -1,6 +1,6 @@
 {
   "name": "keylessai",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Free OpenAI-compatible LLM endpoint live at https://keylessai.thryx.workers.dev/v1. No API keys, no signup, no local install — adaptive failover across 4 keyless upstream LLM providers on Cloudflare Workers.",
   "type": "module",
   "bin": {

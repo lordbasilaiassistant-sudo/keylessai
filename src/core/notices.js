@@ -28,6 +28,19 @@ export const NOTICE_PATTERNS = [
   /need proxies cheaper than/i,
   /op\.wtf/i,
   /remove this message at/i,
+  // Yqcloud / binjie.fun upstream IP-ban content leak. The provider returns
+  // the ban message AS the LLM response body when the worker IP gets flagged.
+  // Observed verbatim 2026-04-28 from a real keylessai call, breaking the
+  // contract that responses come from an LLM. These trigger the same notice
+  // detection so the router can fail over to a different provider.
+  /您的\s?ip/i,                             // "your IP" (Chinese)
+  /防滥用检测/,                              // "abuse detection" (Chinese)
+  /滥用本站/,                                // "abusing this site" (Chinese)
+  /\baichatosrg\.com\b/i,
+  /\bchatavx\.com\b/i,
+  /\bbinjie(?:\.fun|\.site|09)\b/i,
+  /自助购买\s?key/,                          // "self-service key purchase" (Chinese)
+  /apifox\.com\/apidoc/i,
 ];
 
 /**

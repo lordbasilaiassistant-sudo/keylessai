@@ -73,3 +73,25 @@ test("only scans first 600 chars (perf guard for mega-responses)", () => {
   // Spam starts at position ~5000 — outside the 600-char window
   assert.equal(looksLikeNotice(spammy), false);
 });
+
+test("Yqcloud IP-ban content leak → detected", () => {
+  // Real-world sample observed 2026-04-28: when binjie.fun blocks the
+  // worker's IP, yqcloud returns the ban notice AS the LLM response body.
+  // Multiple distinct ban-shape patterns in one body → high confidence.
+  const sample = "sorry, 您的ip已由于触发防滥用检测而被封禁,请勿滥用本站,本服务网址是https://chat18.aichatosrg.com 或者 https://cat.chatavx.com/ 如果你不在本网站，请前往本网站使用即可 如需合作接口调用请联系微信kelemm220 或者前往 https://binjie09.shop 自助购买key, 认为是误封需要解封的请前往https://www.ip.cn/";
+  assert.equal(looksLikeNotice(sample), true);
+});
+
+test("Yqcloud short ban line → detected via short+url+hit heuristic", () => {
+  // Sometimes the response is truncated to just the leading ban sentence.
+  const sample = "您的ip已由于触发防滥用检测而被封禁，请前往 https://www.ip.cn/";
+  assert.equal(looksLikeNotice(sample), true);
+});
+
+test("legitimate Chinese-language response with one IP mention → NOT detected", () => {
+  // A real LLM response that happens to mention "ip" in Chinese should not
+  // trigger. The heuristic requires 2+ ban-specific patterns OR short body
+  // + url + 1 hit. Long body + only one weak match → not a notice.
+  const sample = "用户的IP地址通常用于网络识别。每个设备连接到互联网时都会获得一个IP地址。这里有更多关于网络协议、IPv4 vs IPv6 的细节，以及如何配置 DHCP 服务器。完整教程包括步骤1：安装路由器；步骤2：配置网络设置；步骤3：测试连接。完整文档见 https://developer.mozilla.org/zh-CN/docs/Web/HTTP";
+  assert.equal(looksLikeNotice(sample), false);
+});
