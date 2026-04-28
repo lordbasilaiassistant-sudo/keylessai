@@ -369,7 +369,7 @@ async function handleModels() {
 async function handleHealth() {
   return json(200, {
     status: "ok",
-    version: "0.4.1",
+    version: "0.4.2",
     runtime: "cloudflare-worker",
     providers: Object.keys(PROVIDERS),
     aliases: Object.keys(MODEL_ALIASES).length,
