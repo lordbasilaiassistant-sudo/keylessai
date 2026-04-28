@@ -27,20 +27,54 @@ function toolDeltaChunk(c) {
  * Build the final non-streaming `message.tool_calls` array from accumulated
  * deltas. Keyed by `index` so parallel tool calls assemble independently
  * and out-of-order fragments still produce a stable result.
+ *
+ * Defensive stitch (added 2026-04-28 after observing Pollinations occasionally
+ * fragmenting one logical tool call across two indices — first carries
+ * `name + truncated JSON args`, second carries `empty name + tail of args`).
+ * Heuristic: if an entry has empty `name` AND its `arguments` look like a
+ * JSON tail (i.e. don't start with `{` and the previous entry's args don't
+ * already form valid JSON), append its args to the previous entry instead
+ * of emitting it as a separate tool call. This restores the model's
+ * intended single tool call without affecting genuinely-parallel ones.
  */
-function buildToolCallsFromAccumulator(acc) {
+export function buildToolCallsFromAccumulator(acc) {
   const indices = Object.keys(acc).map(Number).sort((a, b) => a - b);
-  return indices.map((i) => {
+  const stitched = []; // { id, name, arguments } in emission order
+  for (const i of indices) {
     const e = acc[i];
-    return {
-      id: e.id || `call_${i}`,
-      type: "function",
-      function: {
-        name: e.name || "",
-        arguments: e.arguments || "",
-      },
-    };
-  });
+    const isFragment =
+      !e.name &&
+      stitched.length > 0 &&
+      e.arguments &&
+      !looksLikeOpenJson(e.arguments) &&
+      !isCompleteJson(stitched[stitched.length - 1].arguments);
+    if (isFragment) {
+      stitched[stitched.length - 1].arguments += e.arguments;
+      continue;
+    }
+    stitched.push({ id: e.id, name: e.name || "", arguments: e.arguments || "" });
+  }
+  return stitched.map((e, n) => ({
+    id: e.id || `call_${n}`,
+    type: "function",
+    function: { name: e.name, arguments: e.arguments },
+  }));
+}
+
+// "Looks like the start of a fresh JSON object" — distinguishes a real tool
+// call's args from a continuation fragment.
+function looksLikeOpenJson(s) {
+  if (typeof s !== "string") return false;
+  const t = s.trimStart();
+  return t.startsWith("{") || t.startsWith("[");
+}
+
+// True iff the string parses cleanly as JSON. Used to detect when a
+// previous tool call's args are already complete (so we should NOT stitch
+// the next chunk onto it).
+function isCompleteJson(s) {
+  if (typeof s !== "string" || !s.trim()) return false;
+  try { JSON.parse(s); return true; } catch { return false; }
 }
 
 const MODEL_ALIASES = {

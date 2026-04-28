@@ -4,6 +4,18 @@ Notable changes. This project follows [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-04-28
+
+Robustness fixes from THRYX dogfooding. Stress-testing AUTO-style tool-call traffic against the live Worker surfaced two real failure modes that callers can't recover from on their own.
+
+### Fixed
+- **Yqcloud IP-ban content leak** — when `binjie.fun` blocks the Worker's IP, Yqcloud returns the Chinese-language ban notice as `message.content` instead of a real LLM response. The notice detector previously didn't recognize this shape, so it fell through to the caller as if it were a model output. Added 9 patterns matching the ban-message structure (Chinese phrases like "您的ip", "防滥用检测", "滥用本站", "自助购买key", and the leaked spam domains `aichatosrg.com` / `chatavx.com` / `binjie.fun` / `binjie.site` / `binjie09` / `apifox.com/apidoc`). Router now flags + fails over instead of returning the ban as content. 2 new tests in `test/notices.test.mjs` plus 1 negative-control test that a legitimate Chinese-language LLM response with a passing IP mention is NOT flagged.
+- **Pollinations tool-call fragmentation** — observed live where one logical tool call streams as two `tool_call_delta` chunks with different indices: first carries `name + truncated JSON args` (e.g. `'{"percent":'`), second carries `empty name + tail of args` (e.g. `'50}'`). The previous accumulator in `src/server/proxy.js` emitted both as separate `message.tool_calls[]` entries, breaking any caller that runs `JSON.parse(arguments)`. The accumulator now stitches: when an entry has empty `name` AND its args don't start with `{` or `[` AND the previous entry's args don't already form valid JSON, the fragment is merged into the previous entry. 6 new tests in `test/tools.test.mjs` covering: clean single calls (no false-stitch), real fragmented case stitches and the resulting JSON parses, genuinely-parallel calls do NOT stitch, complete-JSON-followed-by-empty-name does NOT stitch, out-of-order indices, missing `id` fallback.
+
+### Internal
+- Exported `buildToolCallsFromAccumulator` from `src/server/proxy.js` for unit testability. Marked internal in JSDoc; not part of the documented public API.
+- Full suite: 136/136 tests passing.
+
 ## [0.4.0] — 2026-04-25
 
 Tool calling. The `tools` field is no longer silently dropped — `tool_calls` round-trips end to end on the public Worker and the local proxy.

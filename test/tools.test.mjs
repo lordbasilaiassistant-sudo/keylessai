@@ -10,7 +10,7 @@ import {
   FAILOVER_ORDER,
   PROVIDERS,
 } from "../src/core/router.js";
-import { createProxy } from "../src/server/proxy.js";
+import { createProxy, buildToolCallsFromAccumulator } from "../src/server/proxy.js";
 
 function makeStubProvider({ id, tools = false, chunks = [] }) {
   return {
@@ -293,4 +293,82 @@ test("toolDeltaChunk shape matches OpenAI: index always set, type=function, func
     setFailoverOrder(originalOrder);
     unregisterProvider("stub-shape");
   }
+});
+
+// ---------------------------------------------------------------------------
+// Defensive stitch: Pollinations occasionally fragments one logical tool call
+// across two indices — first carries name + truncated JSON args, second
+// carries empty name + tail of args. Observed live 2026-04-28 returning:
+//   tool_calls: [
+//     { function: { name: "swap_thryx_for_eth", arguments: '{"percent":' } },
+//     { function: { name: "",                   arguments: '50}' } }
+//   ]
+// AUTO-style consumers JSON.parse(arguments) and silently fall to args={},
+// which then fails tool validation. The stitcher detects this shape and
+// merges the fragment into the previous entry instead of emitting two.
+// ---------------------------------------------------------------------------
+
+test("buildToolCallsFromAccumulator: clean single tool call passes through", () => {
+  const acc = { 0: { id: "call_x", name: "buy_token", arguments: '{"address":"0xaa","amount":"0.001"}' } };
+  const out = buildToolCallsFromAccumulator(acc);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].id, "call_x");
+  assert.equal(out[0].function.name, "buy_token");
+  assert.equal(out[0].function.arguments, '{"address":"0xaa","amount":"0.001"}');
+});
+
+test("buildToolCallsFromAccumulator: stitches fragmented tool call (Pollinations bug)", () => {
+  const acc = {
+    0: { id: "call_a", name: "swap_thryx_for_eth", arguments: '{"percent":' },
+    1: { id: "call_b", name: "",                   arguments: '50}' },
+  };
+  const out = buildToolCallsFromAccumulator(acc);
+  // Should collapse into a single tool call with the args concatenated.
+  assert.equal(out.length, 1, `expected 1 stitched call, got ${out.length}: ${JSON.stringify(out)}`);
+  assert.equal(out[0].function.name, "swap_thryx_for_eth");
+  assert.equal(out[0].function.arguments, '{"percent":50}');
+  // And the JSON should now actually parse.
+  assert.deepEqual(JSON.parse(out[0].function.arguments), { percent: 50 });
+});
+
+test("buildToolCallsFromAccumulator: does NOT stitch genuinely-parallel tool calls", () => {
+  // Two distinct named tool calls — both should be kept separate even though
+  // their args happen to be small.
+  const acc = {
+    0: { id: "call_a", name: "fn_one", arguments: '{"x":1}' },
+    1: { id: "call_b", name: "fn_two", arguments: '{"y":2}' },
+  };
+  const out = buildToolCallsFromAccumulator(acc);
+  assert.equal(out.length, 2);
+  assert.equal(out[0].function.name, "fn_one");
+  assert.equal(out[1].function.name, "fn_two");
+});
+
+test("buildToolCallsFromAccumulator: does NOT stitch when previous is already complete JSON", () => {
+  // First call is complete; second has empty name but starts with '{' so
+  // looks like a fresh JSON. Should NOT merge — keeps both.
+  const acc = {
+    0: { id: "call_a", name: "fn_one", arguments: '{"x":1}' },
+    1: { id: "call_b", name: "",       arguments: '{"y":2}' },
+  };
+  const out = buildToolCallsFromAccumulator(acc);
+  // Two entries — empty-name second one stays separate because its args
+  // form valid JSON of their own and the previous args are already complete.
+  assert.equal(out.length, 2);
+});
+
+test("buildToolCallsFromAccumulator: out-of-order indices sort correctly", () => {
+  const acc = {
+    1: { id: "call_b", name: "fn_two", arguments: '{}' },
+    0: { id: "call_a", name: "fn_one", arguments: '{}' },
+  };
+  const out = buildToolCallsFromAccumulator(acc);
+  assert.equal(out[0].function.name, "fn_one");
+  assert.equal(out[1].function.name, "fn_two");
+});
+
+test("buildToolCallsFromAccumulator: missing id falls back to call_<n>", () => {
+  const acc = { 0: { id: undefined, name: "fn", arguments: '{}' } };
+  const out = buildToolCallsFromAccumulator(acc);
+  assert.equal(out[0].id, "call_0");
 });
