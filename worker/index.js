@@ -29,16 +29,49 @@ function toolDeltaChunk(c) {
   return tc;
 }
 
+// Defensive stitch (added 2026-04-28 in 0.4.1 after observing Pollinations
+// occasionally fragmenting one logical tool call across two indices — first
+// carries `name + truncated JSON args`, second carries `empty name + tail
+// of args`). Heuristic: if an entry has empty `name` AND its `arguments`
+// don't look like a fresh JSON object AND the previous entry's args don't
+// already form valid JSON, append into the previous entry instead of
+// emitting it as a separate tool call. Restores the model's intent.
+//
+// IMPORTANT: this logic is mirrored in src/server/proxy.js. Keep them in
+// sync until both files import from a shared helper (follow-up task).
 function buildToolCallsFromAccumulator(acc) {
   const indices = Object.keys(acc).map(Number).sort((a, b) => a - b);
-  return indices.map((i) => {
+  const stitched = [];
+  for (const i of indices) {
     const e = acc[i];
-    return {
-      id: e.id || `call_${i}`,
-      type: "function",
-      function: { name: e.name || "", arguments: e.arguments || "" },
-    };
-  });
+    const isFragment =
+      !e.name &&
+      stitched.length > 0 &&
+      e.arguments &&
+      !looksLikeOpenJson(e.arguments) &&
+      !isCompleteJson(stitched[stitched.length - 1].arguments);
+    if (isFragment) {
+      stitched[stitched.length - 1].arguments += e.arguments;
+      continue;
+    }
+    stitched.push({ id: e.id, name: e.name || "", arguments: e.arguments || "" });
+  }
+  return stitched.map((e, n) => ({
+    id: e.id || `call_${n}`,
+    type: "function",
+    function: { name: e.name, arguments: e.arguments },
+  }));
+}
+
+function looksLikeOpenJson(s) {
+  if (typeof s !== "string") return false;
+  const t = s.trimStart();
+  return t.startsWith("{") || t.startsWith("[");
+}
+
+function isCompleteJson(s) {
+  if (typeof s !== "string" || !s.trim()) return false;
+  try { JSON.parse(s); return true; } catch { return false; }
 }
 
 const MODEL_ALIASES = {
