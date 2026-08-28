@@ -8,6 +8,6 @@
     "test": "bash ../dogfood/run-all.sh"
   },
   "dependencies": {
-    "openai": "^6.9.1"
+    "openai": "^7.5.0"
   }
 }
