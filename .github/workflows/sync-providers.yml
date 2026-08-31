@@ -92,7 +92,11 @@ jobs:
           git checkout -B "$BRANCH"
           git add providers/_catalog.json
           git commit -m "chore: sync providers/_catalog.json from g4f-working"
-          git push --force-with-lease origin "$BRANCH"
+          # Plain --force, not --force-with-lease: the checkout is shallow and has
+          # no ref for the remote branch, so the lease is always "stale info" once
+          # the branch exists. Safe here because the branch is machine-owned and
+          # recreated from main on every run.
+          git push --force origin "$BRANCH"
 
           STATE="$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null || true)"
           if [ "$STATE" = "OPEN" ]; then
