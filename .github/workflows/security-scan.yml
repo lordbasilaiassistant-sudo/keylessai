@@ -19,6 +19,8 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      pull-requests: read
+      actions: read
     steps:
       - uses: actions/checkout@v6
         with:
@@ -30,6 +32,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   codeql:
+    # CodeQL uploads to code scanning, which a private repo on the free plan
+    # does not have: 'Code scanning is not enabled for this repository.'
+    # Skip rather than fail; re-runs by itself if the repo goes public.
+    if: github.event.repository.visibility == 'public'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

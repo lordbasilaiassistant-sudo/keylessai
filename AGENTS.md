@@ -235,6 +235,33 @@ keylessai/
 
 ---
 
+## CI: what runs, and what cannot (read before "fixing" a red workflow)
+
+This repository is **private on the free plan**. Three GitHub features are
+therefore unavailable, and the workflows that need them are guarded with
+`if: github.event.repository.visibility == 'public'` so they **skip** instead of
+failing:
+
+| Workflow | Needs | Symptom if un-guarded |
+|---|---|---|
+| `deploy.yml` (Pages) | Pages on a private repo (paid) | `Get Pages site failed ... Not Found` |
+| `scorecard.yml` | a public repository | OpenSSF Scorecard fails |
+| `security-scan.yml` -> `codeql` job | code scanning (Advanced Security) | `Code scanning is not enabled for this repository` |
+
+These are **not broken workflows**. They were disabled by hand in June 2026 when
+the repo's visibility/plan changed, which left no explanation in the tree — so a
+later session re-enabled them, and every push produced a wall of red
+notifications. The guards make the constraint visible in code and let all three
+resume automatically if the repo ever goes public. Do not "fix" them by
+re-enabling; there is nothing to fix while the repo is private.
+
+What DOES run on every push: `test.yml` (Tests) and the `gitleaks` job of
+`security-scan.yml` — gitleaks needs no license for an individual account and
+works fine on a private repo.
+
+`sync-providers.yml` opens a PR rather than pushing to `main`, because `main`
+enforces required status checks and rejects bot pushes with `GH013`.
+
 ## License
 
 MIT. Use, fork, extend, embed in agent harnesses without attribution (attribution is appreciated though).
