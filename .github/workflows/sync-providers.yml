@@ -98,5 +98,5 @@ jobs:
           if [ "$STATE" = "OPEN" ]; then
             echo "PR for $BRANCH already open; pushed the update to it."
           else
-            gh pr create --base main --head "$BRANCH" --title "chore: sync providers/_catalog.json from g4f-working" --body "Automated daily sync of `providers/_catalog.json` from the upstream g4f-working catalog. Opened as a pull request rather than a direct push: `main` enforces required status checks, which rejected the previous bot pushes with GH013 and left this workflow failing every day until it was disabled."
+            gh pr create --base main --head "$BRANCH" --title 'chore: sync providers/_catalog.json from g4f-working' --body 'Automated daily sync of providers/_catalog.json from the upstream g4f-working catalog. Opened as a pull request rather than a direct push: main enforces required status checks, which rejected the previous bot pushes with GH013 and left this workflow failing every day until it was disabled.'
           fi
