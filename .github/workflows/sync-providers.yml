@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   sync:
@@ -48,7 +49,9 @@ jobs:
             fs.writeFileSync("providers/_catalog.json", JSON.stringify(out, null, 2) + "\n");
           '
 
-      - name: Commit if catalog changed (ignoring last_updated)
+      - name: Open PR if catalog changed (ignoring last_updated)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           if [ ! -f providers/_catalog.json ]; then
@@ -74,12 +77,26 @@ jobs:
           ')"
 
           if [ "$CHANGED" = "0" ]; then
-            echo "No meaningful change in catalog; skipping commit."
+            echo "No meaningful change in catalog; skipping PR."
             exit 0
           fi
 
+          # `main` is protected by a ruleset requiring status checks, so a direct
+          # push from this job is always rejected (GH013 - "3 of 3 required
+          # status checks are expected"). Route the update through a PR branch
+          # instead, so the required checks actually run on it.
+          BRANCH="chore/sync-providers-catalog"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
           git add providers/_catalog.json
-          git commit -m "chore: sync providers/_catalog.json from g4f-working [skip ci]"
-          git push
+          git commit -m "chore: sync providers/_catalog.json from g4f-working"
+          git push --force-with-lease origin "$BRANCH"
+
+          STATE="$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null || true)"
+          if [ "$STATE" = "OPEN" ]; then
+            echo "PR for $BRANCH already open; pushed the update to it."
+          else
+            gh pr create --base main --head "$BRANCH" --title "chore: sync providers/_catalog.json from g4f-working" --body "Automated daily sync of `providers/_catalog.json` from the upstream g4f-working catalog. Opened as a pull request rather than a direct push: `main` enforces required status checks, which rejected the previous bot pushes with GH013 and left this workflow failing every day until it was disabled."
+          fi
