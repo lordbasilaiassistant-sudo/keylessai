@@ -16,6 +16,11 @@ concurrency:
 
 jobs:
   deploy:
+    # GitHub Pages is not available for a private repo on the free plan, so
+    # Configure Pages fails with 'Get Pages site failed ... Not Found'. Skip
+    # rather than fail; this starts working again by itself if the repo goes
+    # public. Last successful deploy: 2026-04-28.
+    if: github.event.repository.visibility == 'public'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

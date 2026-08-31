@@ -16,6 +16,8 @@ permissions: read-all
 
 jobs:
   analysis:
+    # OpenSSF Scorecard only supports public repositories.
+    if: github.event.repository.visibility == 'public'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
