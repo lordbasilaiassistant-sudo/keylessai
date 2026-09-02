@@ -81,10 +81,13 @@ jobs:
             exit 0
           fi
 
-          # `main` is protected by a ruleset requiring status checks, so a direct
-          # push from this job is always rejected (GH013 - "3 of 3 required
-          # status checks are expected"). Route the update through a PR branch
-          # instead, so the required checks actually run on it.
+          # `main` is governed by the `main-safeguards` ruleset, which requires
+          # the test / gitleaks / CodeQL checks and whose only bypass actor is
+          # the repository-admin role. github-actions[bot] is not an admin, so a
+          # direct push from this job is always rejected with GH013 ("3 of 3
+          # required status checks are expected"). Route the update through a PR
+          # branch instead, so the required checks actually run on it, then let
+          # auto-merge land it (see the merge step below).
           BRANCH="chore/sync-providers-catalog"
 
           git config user.name "github-actions[bot]"
@@ -98,9 +101,33 @@ jobs:
           # recreated from main on every run.
           git push --force origin "$BRANCH"
 
+          BODY="$(cat <<'EOF'
+          Automated daily sync of providers/_catalog.json from the upstream g4f-working catalog.
+
+          Opened as a pull request rather than a direct push: `main` carries the `main-safeguards` ruleset, whose bypass list is repository-admins only, so a bot push is rejected with GH013 ("3 of 3 required status checks are expected"). The PR route lets `test`, `gitleaks` and `CodeQL` actually run on the change.
+
+          Auto-merge is enabled on this PR, so it squash-merges itself once those three checks pass. No human step is required; if this PR is sitting open, a required check has not gone green.
+          EOF
+          )"
+
           STATE="$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null || true)"
           if [ "$STATE" = "OPEN" ]; then
             echo "PR for $BRANCH already open; pushed the update to it."
           else
-            gh pr create --base main --head "$BRANCH" --title 'chore: sync providers/_catalog.json from g4f-working' --body 'Automated daily sync of providers/_catalog.json from the upstream g4f-working catalog. Opened as a pull request rather than a direct push: main enforces required status checks, which rejected the previous bot pushes with GH013 and left this workflow failing every day until it was disabled.'
+            gh pr create --base main --head "$BRANCH" \
+              --title 'chore: sync providers/_catalog.json from g4f-working' \
+              --body "$BODY"
+          fi
+
+          # Hand the PR to GitHub's auto-merge queue so the daily sync lands on
+          # its own. This removes the HUMAN from the loop, not the gate: the
+          # ruleset stays fully enforced and the merge only fires after test,
+          # gitleaks and CodeQL are green. If a check fails the PR just stays
+          # open, which is the honest signal we want.
+          # Re-running this on an already-queued PR is a no-op, so it is safe on
+          # the "already open" path above.
+          if gh pr merge "$BRANCH" --auto --squash --delete-branch; then
+            echo "Auto-merge enabled for $BRANCH."
+          else
+            echo "::warning::Could not enable auto-merge on $BRANCH; the PR is open and needs a look."
           fi
