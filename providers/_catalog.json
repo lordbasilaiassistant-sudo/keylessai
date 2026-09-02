@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-09-02T10:59:11Z",
+  "last_updated": "2026-09-02T17:11:51Z",
   "source": "https://raw.githubusercontent.com/Free-AI-Things/g4f-working/main/working/working_results.txt",
   "providers": {
     "AnyProvider": [
@@ -44,13 +44,14 @@
       "command-r7b-arabic-02-2025"
     ],
     "KiloCode": [
+      "dots-studio/dots-3-note-preview:free",
       "kilo-auto/free",
       "kilo-auto/small",
-      "liquid/lfm-2.5-2.6b:free",
+      "minimax/minimax-m2.7:free",
       "minimax/minimax-m3:free",
-      "nvidia/nemotron-3-super-120b-a12b:free",
+      "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
       "nvidia/nemotron-3-ultra-550b-a55b:free",
-      "poolside/laguna-s-2.1:free"
+      "openrouter/free"
     ],
     "OpenAIFM": [
       "alloy",
@@ -74,14 +75,22 @@
     "Perplexity": [
       "auto",
       "claude2",
+      "claude37sonnetthinking",
+      "claude40opus_research",
       "claude40opusthinking",
+      "claude40opusthinking_labs",
+      "claude40sonnetthinking_labs",
       "claude45sonnet",
+      "claude45sonnetthinking",
+      "comet_max_assistant",
       "experimental",
-      "gpt5",
-      "gpt5_thinking",
-      "grok",
-      "grok4",
+      "gemini2flash",
+      "gpt41",
+      "gpt45",
+      "o3_labs",
       "o3pro",
+      "o4mini",
+      "pplx_alpha",
       "pplx_pro_upgraded",
       "turbo"
     ],
