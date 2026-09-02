@@ -3,6 +3,17 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # The daily providers-catalog sync now merges itself (see sync-providers.yml).
+  # That merge is performed by github-actions[bot] using GITHUB_TOKEN, and a
+  # push made with GITHUB_TOKEN does NOT start a workflow run - measured on the
+  # merge of PR #81, which produced no push-event runs on main at all. So the
+  # `push` trigger above never fires for a synced catalog and Pages would keep
+  # serving a stale providers/_catalog.json until some human pushed to main.
+  #
+  # Run on a schedule as well, an hour after the 06:00 UTC sync, so the site
+  # picks the catalog up regardless of who merged it.
+  schedule:
+    - cron: '0 7 * * *'
   workflow_dispatch:
 
 permissions:
