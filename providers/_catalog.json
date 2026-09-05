@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-09-04T10:58:23Z",
+  "last_updated": "2026-09-05T10:19:49Z",
   "source": "https://raw.githubusercontent.com/Free-AI-Things/g4f-working/main/working/working_results.txt",
   "providers": {
     "AnyProvider": [
@@ -10,7 +10,9 @@
       "command-r-plus24",
       "command-r24",
       "command-r7b",
+      "command-r7b-arabic25",
       "command-r7b24",
+      "flux",
       "flux-dev",
       "gemini-2.5-flash",
       "gemini-3.1-flash-lite",
@@ -39,17 +41,15 @@
       "command-r-08-2024",
       "command-r-plus-08-2024",
       "command-r7b-12-2024",
-      "flux-dev"
+      "command-r7b-arabic-02-2025"
     ],
     "KiloCode": [
-      "cohere/north-mini-code:free",
-      "dots-studio/dots-3-note-preview:free",
       "kilo-auto/small",
       "liquid/lfm-2.5-2.6b:free",
       "minimax/minimax-m3:free",
+      "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
       "nvidia/nemotron-3-ultra-550b-a55b:free",
-      "openrouter/free",
       "poolside/laguna-s-2.1:free"
     ],
     "OpenAIFM": [
@@ -73,25 +73,25 @@
     ],
     "Perplexity": [
       "auto",
-      "claude2",
+      "claude37sonnetthinking",
       "claude40opus",
       "claude40opus_research",
       "claude40opusthinking",
-      "claude40sonnet_research",
+      "claude40opusthinking_research",
+      "claude40sonnetthinking_labs",
+      "claude40sonnetthinking_research",
       "claude41opusthinking",
+      "claude45sonnet",
       "claude45sonnetthinking",
       "experimental",
       "gemini2flash",
-      "gpt41",
       "gpt5",
       "gpt5_thinking",
       "o3_research",
-      "o3pro",
       "o3pro_labs",
       "o3pro_research",
-      "pplx_beta",
-      "pplx_pro_upgraded",
-      "turbo"
+      "o4mini",
+      "pplx_beta"
     ],
     "Yqcloud": [
       "gpt-4"
