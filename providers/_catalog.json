@@ -1,36 +1,11 @@
 {
-  "last_updated": "2026-09-06T10:39:37Z",
+  "last_updated": "2026-09-07T12:05:44Z",
   "source": "https://raw.githubusercontent.com/Free-AI-Things/g4f-working/main/working/working_results.txt",
   "providers": {
-    "AnyProvider": [
-      "command-a",
-      "command-a25",
-      "command-r",
-      "command-r-plus",
-      "command-r-plus24",
-      "command-r24",
-      "command-r7b",
-      "command-r7b-arabic25",
-      "command-r7b24",
-      "flux-dev",
-      "gemini-2.5-flash",
-      "gemini-3.1-flash-lite",
-      "gemini-3.5-flash",
-      "gemini-3.5-flash-lite",
-      "gemini-3.5-flash-thinking",
-      "gemini-3.5-flash-thinking-lite",
-      "gemini-3.6-flash",
-      "gemini-auto",
-      "gemini-flash-lite",
-      "gpt-4",
-      "gpt-4o-mini-tts",
-      "perplexity",
-      "pplx_pro",
-      "r1-1776",
-      "sd-3.5-large"
+    "BlackForestLabs_Flux1Dev": [
+      "flux"
     ],
     "Gemini": [
-      "cf41b0e0dd7d53e5",
       "fbb127bbb056c959"
     ],
     "HuggingSpace": [
@@ -40,15 +15,18 @@
       "command-r-08-2024",
       "command-r-plus-08-2024",
       "command-r7b-12-2024",
-      "command-r7b-arabic-02-2025"
+      "command-r7b-arabic-02-2025",
+      "sd-3.5-large"
     ],
     "KiloCode": [
-      "inclusionai/ling-3.0-flash-sante:free",
+      "dots-studio/dots-3-note-preview:free",
       "kilo-auto/small",
       "liquid/lfm-2.5-2.6b:free",
+      "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
       "nvidia/nemotron-3-ultra-550b-a55b:free",
-      "openrouter/free"
+      "nvidia/nemotron-3.5-lightning:free",
+      "poolside/laguna-s-2.1:free"
     ],
     "LLM7": [
       "default"
@@ -75,21 +53,18 @@
     "Perplexity": [
       "auto",
       "claude37sonnetthinking",
-      "claude40opus",
       "claude40opusthinking",
-      "claude40sonnet_research",
-      "claude40sonnetthinking_research",
-      "claude45sonnet",
-      "comet_max_assistant",
+      "claude40sonnetthinking_labs",
+      "claude41opusthinking",
+      "experimental",
       "gemini2flash",
-      "gpt41",
       "gpt5",
       "gpt5_thinking",
-      "grok4",
-      "o3",
-      "o3pro",
-      "pplx_alpha",
-      "turbo"
+      "grok",
+      "o3"
+    ],
+    "StabilityAI_SD35Large": [
+      "sd-3.5-large"
     ],
     "Yqcloud": [
       "gpt-4"
