@@ -154,10 +154,14 @@ jobs:
             exit 0
           fi
 
+          # A parked run reports status "completed" with conclusion
+          # "action_required" - NOT status "action_required". Filtering on status
+          # alone matched nothing and this step reported "no parked runs" six
+          # times in a row while two runs sat parked (run 34231685216).
           approved=0
           for attempt in 1 2 3 4 5 6; do
             ids="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=$BRANCH&event=pull_request&per_page=30" \
-                     --jq '.workflow_runs[] | select(.status == "action_required") | .id' 2>/dev/null || true)"
+                     --jq '.workflow_runs[] | select(.status == "action_required" or .conclusion == "action_required") | .id' 2>/dev/null || true)"
             for id in $ids; do
               if gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$id/approve" >/dev/null 2>&1; then
                 echo "approved run $id"
