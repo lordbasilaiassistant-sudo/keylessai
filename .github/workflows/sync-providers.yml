@@ -154,29 +154,55 @@ jobs:
             exit 0
           fi
 
+          # Only runs on the PR's CURRENT head count toward its required checks.
+          # The step force-pushes just before this, so the branch carries parked
+          # runs for the superseded commit too, and approving those satisfies
+          # nothing. Run 34232256280 did exactly that: it approved 87a7e7f1's two
+          # runs, reported success, and left a8756c6e - the actual PR head -
+          # parked.
+          HEAD_SHA="$(gh pr view "$BRANCH" --json headRefOid --jq .headRefOid)"
+          echo "PR head is $HEAD_SHA"
+
           # A parked run reports status "completed" with conclusion
           # "action_required" - NOT status "action_required". Filtering on status
-          # alone matched nothing and this step reported "no parked runs" six
-          # times in a row while two runs sat parked (run 34231685216).
+          # alone matched nothing while two runs sat parked (run 34231685216).
+          parked() {
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=$BRANCH&event=pull_request&per_page=50" \
+              --jq ".workflow_runs[]
+                    | select(.head_sha == \"$HEAD_SHA\")
+                    | select(.status == \"action_required\" or .conclusion == \"action_required\")
+                    | .id" 2>/dev/null || true
+          }
+
+          # Never break on the first success: runs are registered a few seconds
+          # apart, so an early exit leaves the stragglers parked. Keep going until
+          # three consecutive polls find nothing left on this head.
           approved=0
-          for attempt in 1 2 3 4 5 6; do
-            ids="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=$BRANCH&event=pull_request&per_page=30" \
-                     --jq '.workflow_runs[] | select(.status == "action_required" or .conclusion == "action_required") | .id' 2>/dev/null || true)"
-            for id in $ids; do
-              if gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$id/approve" >/dev/null 2>&1; then
-                echo "approved run $id"
-                approved=$((approved + 1))
-              else
-                echo "::warning::GITHUB_TOKEN could not approve run $id - approve it by hand, and this job needs a PAT with actions:write"
-              fi
-            done
-            if [ "$approved" -gt 0 ]; then break; fi
-            echo "no parked runs yet (attempt $attempt); waiting"
+          quiet=0
+          for attempt in $(seq 1 12); do
+            ids="$(parked)"
+            if [ -z "$ids" ]; then
+              quiet=$((quiet + 1))
+              if [ "$quiet" -ge 3 ]; then break; fi
+            else
+              quiet=0
+              for id in $ids; do
+                if gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$id/approve" >/dev/null 2>&1; then
+                  echo "approved run $id"
+                  approved=$((approved + 1))
+                else
+                  echo "::warning::GITHUB_TOKEN could not approve run $id - approve it by hand, and this job needs a PAT with actions:write"
+                fi
+              done
+            fi
             sleep 10
           done
 
-          if [ "$approved" -eq 0 ]; then
-            echo "::warning::No parked runs were approved. If the PR checks show action_required, this step is not working."
+          leftover="$(parked | tr '\n' ' ')"
+          if [ -n "$leftover" ]; then
+            echo "::warning::Still parked on $HEAD_SHA after $approved approval(s): $leftover"
+          elif [ "$approved" -eq 0 ]; then
+            echo "::warning::Nothing was parked on $HEAD_SHA. Either the checks started on their own or this step is looking in the wrong place."
           else
-            echo "Released $approved parked run(s)."
+            echo "Released $approved parked run(s); nothing left parked on $HEAD_SHA."
           fi
