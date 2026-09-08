@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Sync providers/_catalog.json from g4f-working
         env:

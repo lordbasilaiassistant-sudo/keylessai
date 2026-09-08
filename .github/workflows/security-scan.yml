@@ -22,7 +22,7 @@ jobs:
       pull-requests: read
       actions: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # full history so historical commits are scanned
 
@@ -42,7 +42,7 @@ jobs:
       security-events: write
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: github/codeql-action/init@v4
         with:
           languages: javascript
