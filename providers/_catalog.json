@@ -1,12 +1,12 @@
 {
-  "last_updated": "2026-09-07T12:05:44Z",
+  "last_updated": "2026-09-08T10:58:18Z",
   "source": "https://raw.githubusercontent.com/Free-AI-Things/g4f-working/main/working/working_results.txt",
   "providers": {
     "BlackForestLabs_Flux1Dev": [
-      "flux"
+      "flux-dev"
     ],
     "Gemini": [
-      "fbb127bbb056c959"
+      "9d8ca3786ebdfbea"
     ],
     "HuggingSpace": [
       "command-a",
@@ -19,14 +19,16 @@
       "sd-3.5-large"
     ],
     "KiloCode": [
+      "cohere/north-mini-code:free",
       "dots-studio/dots-3-note-preview:free",
       "kilo-auto/small",
       "liquid/lfm-2.5-2.6b:free",
+      "minimax/minimax-m3:free",
       "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
       "nvidia/nemotron-3-ultra-550b-a55b:free",
       "nvidia/nemotron-3.5-lightning:free",
-      "poolside/laguna-s-2.1:free"
+      "openrouter/free"
     ],
     "LLM7": [
       "default"
@@ -51,17 +53,18 @@
       "verse"
     ],
     "Perplexity": [
-      "auto",
       "claude37sonnetthinking",
       "claude40opusthinking",
-      "claude40sonnetthinking_labs",
       "claude41opusthinking",
-      "experimental",
+      "claude45sonnet",
+      "claude45sonnetthinking",
       "gemini2flash",
-      "gpt5",
+      "gpt41",
       "gpt5_thinking",
-      "grok",
-      "o3"
+      "grok4",
+      "o3",
+      "pplx_beta",
+      "pplx_reasoning"
     ],
     "StabilityAI_SD35Large": [
       "sd-3.5-large"
