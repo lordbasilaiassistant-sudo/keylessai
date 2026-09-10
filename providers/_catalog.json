@@ -1,21 +1,13 @@
 {
-  "last_updated": "2026-09-08T13:33:16Z",
+  "last_updated": "2026-09-10T10:59:20Z",
   "source": "https://raw.githubusercontent.com/Free-AI-Things/g4f-working/main/working/working_results.txt",
   "providers": {
     "BlackForestLabs_Flux1Dev": [
-      "flux"
+      "flux-dev"
     ],
-    "Cloudflare": [
-      "deepseek-coder-6.7b",
-      "granite-4.0-h-micro",
-      "llama-4-scout",
-      "qwen3-30b-a3b"
-    ],
-    "CohereForAI_C4AI_Command": [
-      "command-a-03-2025",
-      "command-r-08-2024",
-      "command-r-plus-08-2024",
-      "command-r7b-12-2024"
+    "BraveSearch": [
+      "brave",
+      "brave-deep-research"
     ],
     "Gemini": [
       "9d8ca3786ebdfbea",
@@ -29,56 +21,7 @@
       "command-r-08-2024",
       "command-r-plus-08-2024",
       "command-r7b-12-2024",
-      "flux",
-      "sd-3.5-large"
-    ],
-    "KiloCode": [
-      "cohere/north-mini-code:free",
-      "kilo-auto/small",
-      "liquid/lfm-2.5-2.6b:free",
-      "nvidia/nemotron-3-super-120b-a12b:free",
-      "nvidia/nemotron-3-ultra-550b-a55b:free",
-      "poolside/laguna-s-2.1:free"
-    ],
-    "LLM7": [
-      "default"
-    ],
-    "OpenAIFM": [
-      "alloy",
-      "ash",
-      "ballad",
-      "calm",
-      "coral",
-      "cowboy",
-      "echo",
-      "fable",
-      "friendly",
-      "noir_detective",
-      "nova",
-      "onyx",
-      "patient_teacher",
-      "sage",
-      "scientific_style",
-      "shimmer",
-      "verse"
-    ],
-    "Perplexity": [
-      "auto",
-      "claude2",
-      "claude37sonnetthinking",
-      "claude40opus",
-      "claude40sonnet_research",
-      "claude40sonnetthinking_research",
-      "claude41opusthinking",
-      "gpt4",
-      "gpt41",
-      "gpt4o",
-      "gpt5",
-      "gpt5_thinking",
-      "o3",
-      "o3_labs",
-      "o3pro",
-      "turbo"
+      "flux"
     ],
     "Yqcloud": [
       "gpt-4"
