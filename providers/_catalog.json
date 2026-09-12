@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-09-11T10:57:37Z",
+  "last_updated": "2026-09-12T10:25:38Z",
   "source": "https://raw.githubusercontent.com/Free-AI-Things/g4f-working/main/working/working_results.txt",
   "providers": {
     "BlackForestLabs_Flux1Dev": [
@@ -10,12 +10,21 @@
       "brave-deep-research"
     ],
     "Gemini": [
-      "9d8ca3786ebdfbea",
-      "cf41b0e0dd7d53e5",
-      "fbb127bbb056c959"
+      "cf41b0e0dd7d53e5"
     ],
-    "StabilityAI_SD35Large": [
-      "sd-3.5-large"
+    "HuggingSpace": [
+      "command-a",
+      "command-a-03-2025",
+      "command-r",
+      "command-r-08-2024",
+      "command-r-plus-08-2024",
+      "command-r7b-12-2024",
+      "command-r7b-arabic-02-2025",
+      "flux"
+    ],
+    "Perplexity": [
+      "pplx_reasoning",
+      "r1"
     ],
     "Yqcloud": [
       "gpt-4"
